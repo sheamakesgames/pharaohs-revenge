@@ -421,7 +421,7 @@ function spawnButton(){
   buttonTimer=null;
 
   if(type==='flush'){
-    const timeout=isLast10?2000:500;
+    // Flush always shows for 1 second then disappears
     buttonTimer=setTimeout(()=>{
       if(activeButton!=='flush')return;
       flushBtn.classList.remove('visible','safe');
@@ -432,9 +432,9 @@ function spawnButton(){
         spawnFloat('MISS! 💀',pos.x,pos.y,false);
         hintText.textContent='🚨 KEEP GOING! SMASH THAT FLUSH! 🚨';
       }
-      // Before last 10 — flush just vanishes silently, no penalty
+      // Before last 10 — flush vanishes silently, no penalty for missing
       scheduleSpawn();
-    },timeout);
+    },1000);
   }
   // Poop and wipe have NO timeout — they stay until pressed
 }
@@ -447,12 +447,13 @@ function scheduleSpawn(){
 function onPress(type){
   if(!gameRunning)return;
 
-  // Pressing flush before last 10 seconds — always resets multiplier
-  // whether it was the active button or not
+  // Pressing flush before last 10 seconds — costs 499 points and resets multiplier
   if(type==='flush'&&!isLast10){
     resetMultiplier('early');
-    hintText.textContent='⚠️ TOO EARLY! Wait for the last 10 seconds!';
-    // If flush was showing, clear it and move on
+    score=Math.max(0,score-499);
+    scoreDisplay.textContent=score;
+    spawnFloat('-499 💀',Math.random()*100+50,Math.random()*60+20,false);
+    hintText.textContent='⚠️ TOO EARLY! -499 points!';
     if(activeButton==='flush'){
       clearTimeout(buttonTimer);
       buttonTimer=null;
