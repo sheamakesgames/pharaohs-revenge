@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pharaoh's Revenge 💩</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Fredoka+One&display=swap');
+  :root { --gold:#FFD700; --dark-gold:#B8860B; --sand:#F5DEB3; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;overflow:hidden;}
+  body{
+    background:linear-gradient(160deg,#1a0a00 0%,#3d1f00 50%,#5a2d08 100%);
+    font-family:'Fredoka One',cursive;
+    display:flex;flex-direction:column;align-items:center;height:100vh;
+  }
+
+  #banner{
+    width:100%;
+    background:linear-gradient(90deg,var(--dark-gold),var(--gold),var(--dark-gold));
+    color:#3d1f00;text-align:center;
+    font-family:'Cinzel Decorative',serif;
+    font-size:clamp(10px,2.2vw,16px);
+    padding:4px 8px;letter-spacing:2px;flex-shrink:0;white-space:nowrap;overflow:hidden;
+  }
+
+  #main{
+    display:flex;flex-direction:row;align-items:stretch;
+    width:100%;flex:1;min-height:0;padding:6px 8px;gap:8px;
+  }
+
+  /* ── LEFT PANEL ── */
+  #left-panel{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    flex-shrink:0;width:clamp(120px,26vw,180px);gap:4px;
+    position:relative; /* needed for particle canvas */
+  }
+  #tut-label{color:var(--gold);font-size:clamp(9px,1.6vw,13px);letter-spacing:1px;opacity:.9;}
+  #tut-wrapper{width:100%;position:relative;}
+
+  /* The SVG itself rises/lowers via this wrapper */
+  #tut-body-group{
+    transition: transform 0.35s cubic-bezier(0.22,1,0.36,1);
+    transform-origin: bottom center;
+  }
+
+  .tut-svg{width:100%;height:auto;display:block;filter:drop-shadow(0 3px 10px rgba(255,215,0,0.2));}
+  #face-caption{
+    color:var(--sand);font-size:clamp(8px,1.4vw,12px);
+    text-align:center;min-height:14px;opacity:.85;padding:0 2px;
+  }
+
+  /* Particle canvas sits over the left panel, pointer-events:none */
+  #part-canvas{
+    position:absolute;
+    top:0;left:0;width:100%;height:100%;
+    pointer-events:none;
+    z-index:10;
+  }
+
+  /* ── RIGHT PANEL ── */
+  #right-panel{display:flex;flex-direction:column;flex:1;min-width:0;gap:5px;}
+
+  #hud{display:flex;gap:5px;flex-shrink:0;}
+  .hud-box{
+    background:linear-gradient(135deg,rgba(255,215,0,.12),rgba(139,69,19,.25));
+    border:1.5px solid var(--dark-gold);border-radius:10px;
+    padding:4px 6px;text-align:center;flex:1;
+  }
+  .hud-label{font-size:clamp(7px,1.3vw,10px);color:var(--gold);opacity:.8;text-transform:uppercase;letter-spacing:1px;display:block;}
+  .hud-value{font-size:clamp(16px,3.5vw,26px);color:var(--gold);text-shadow:0 0 8px rgba(255,215,0,.4);line-height:1.1;}
+
+  #timer-bar-wrap{background:rgba(0,0,0,.4);border-radius:20px;height:11px;border:1.5px solid var(--dark-gold);overflow:hidden;flex-shrink:0;}
+  #timer-bar{height:100%;width:100%;background:linear-gradient(90deg,#ff4444,#FFD700,#44ff88);background-size:300% 100%;background-position:right center;border-radius:20px;transition:width .1s linear;}
+
+  #hint-text{color:rgba(255,215,0,.75);font-size:clamp(8px,1.6vw,12px);text-align:center;min-height:13px;flex-shrink:0;}
+
+  #game-area{
+    flex:1;min-height:0;
+    background:linear-gradient(135deg,rgba(0,0,0,.25),rgba(139,69,19,.15));
+    border:2px dashed rgba(255,215,0,.25);border-radius:14px;
+    position:relative;overflow:hidden;
+  }
+  #game-area::before{
+    content:'TAP BUTTONS HERE!';position:absolute;top:50%;left:50%;
+    transform:translate(-50%,-50%);color:rgba(255,215,0,.1);
+    font-size:clamp(9px,1.8vw,13px);letter-spacing:2px;pointer-events:none;white-space:nowrap;
+  }
+
+  #combo-display{position:absolute;top:6px;right:10px;color:var(--gold);font-size:clamp(10px,1.8vw,14px);opacity:0;transition:opacity .3s;z-index:5;}
+  #combo-display.active{opacity:1;}
+
+  .game-btn{
+    position:absolute;border:none;border-radius:50px;
+    font-family:'Fredoka One',cursive;font-size:clamp(12px,2.2vw,17px);
+    cursor:pointer;padding:clamp(7px,1.2vh,11px) clamp(10px,2vw,18px);
+    transform:scale(0);transition:transform .18s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow:0 5px 18px rgba(0,0,0,.55);user-select:none;white-space:nowrap;
+    z-index:10;-webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  }
+  .game-btn.visible{transform:scale(1);}
+  .game-btn:active{transform:scale(.88)!important;}
+  #poop-btn{background:linear-gradient(135deg,#8B4513,#5C2E00);color:#FFD700;border:2.5px solid #FFD700;}
+  #flush-btn{background:linear-gradient(135deg,#1a6fa8,#0d3d5c);color:#fff;border:2.5px solid #7dd3fc;}
+
+  @keyframes pulse-poop{0%,100%{box-shadow:0 5px 18px rgba(0,0,0,.55),0 0 0 0 rgba(139,69,19,.8);}50%{box-shadow:0 5px 18px rgba(0,0,0,.55),0 0 0 9px rgba(139,69,19,0);}}
+  @keyframes pulse-flush{0%,100%{box-shadow:0 5px 18px rgba(0,0,0,.55),0 0 0 0 rgba(26,111,168,.8);}50%{box-shadow:0 5px 18px rgba(0,0,0,.55),0 0 0 9px rgba(26,111,168,0);}}
+  #poop-btn.visible{animation:pulse-poop .55s infinite;}
+  #flush-btn.visible{animation:pulse-flush .55s infinite;}
+
+  .miss-text,.hit-text{position:absolute;font-size:clamp(13px,2.5vw,19px);font-weight:bold;pointer-events:none;animation:floatUp .65s ease-out forwards;z-index:20;text-shadow:1px 1px 0 #000;}
+  .miss-text{color:#ff5555;}.hit-text{color:#FFD700;}
+  @keyframes floatUp{0%{transform:translateY(0);opacity:1;}100%{transform:translateY(-48px);opacity:0;}}
+
+  #score-popup{
+    position:absolute;top:35%;left:50%;
+    transform:translateX(-50%) scale(0);
+    background:linear-gradient(135deg,var(--gold),var(--dark-gold));
+    color:#3d1f00;font-size:clamp(14px,2.8vw,20px);
+    padding:5px 20px;border-radius:50px;z-index:25;pointer-events:none;
+    transition:transform .18s cubic-bezier(0.34,1.56,0.64,1),opacity .25s;opacity:0;white-space:nowrap;
+  }
+
+  /* ── OVERLAY ── */
+  #overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:50;padding:16px;overflow-y:auto;}
+  #overlay.hidden{display:none;}
+  .overlay-title{font-family:'Cinzel Decorative',serif;font-size:clamp(17px,4.5vw,28px);color:var(--gold);text-shadow:0 0 20px rgba(255,215,0,.5);text-align:center;}
+  .overlay-sub{color:var(--sand);font-size:clamp(12px,2vw,15px);text-align:center;max-width:300px;line-height:1.55;}
+  #scores-panel{background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.25);border-radius:12px;padding:9px 16px;width:100%;max-width:240px;}
+  #scores-panel h3{color:var(--gold);font-size:clamp(10px,1.8vw,13px);text-align:center;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid rgba(255,215,0,.2);}
+  .score-row{display:flex;justify-content:space-between;color:var(--sand);font-size:clamp(11px,1.8vw,13px);padding:2px 0;}
+  .score-row .rank{color:var(--gold);width:22px;}.score-row .score-val{color:var(--gold);}
+  .big-btn{background:linear-gradient(135deg,var(--gold),var(--dark-gold));color:#3d1f00;border:none;border-radius:50px;padding:11px 32px;font-family:'Fredoka One',cursive;font-size:clamp(15px,3vw,21px);cursor:pointer;box-shadow:0 4px 16px rgba(255,215,0,.35),0 2px 0 #5c3d00;transition:transform .1s;touch-action:manipulation;}
+  .big-btn:active{transform:translateY(2px);}
+</style>
+</head>
+<body>
+
+<div id="banner">👑 PHARAOH'S REVENGE — THE ROYAL FLUSH 👑</div>
+
+<div id="main">
+
+  <!-- LEFT: King Tut -->
+  <div id="left-panel">
+    <div id="tut-label">👑 KING TUT</div>
+
+    <div id="tut-wrapper">
+      <!-- Particle canvas for bum particles -->
+      <canvas id="part-canvas"></canvas>
+
+      <svg id="tut-svg" class="tut-svg" viewBox="0 0 180 230" xmlns="http://www.w3.org/2000/svg">
+
+        <!-- TOILET — stays put, never moves -->
+        <g id="throne-group">
+          <ellipse cx="90" cy="218" rx="52" ry="10" fill="#c8b89a" opacity="0.4"/>
+          <ellipse cx="90" cy="213" rx="50" ry="11" fill="#e8dcc8" stroke="#c8b89a" stroke-width="1.5"/>
+          <rect x="40" y="200" width="100" height="17" rx="7" fill="#f0e6d0" stroke="#c8b89a" stroke-width="1.5"/>
+          <rect x="38" y="196" width="104" height="9" rx="4" fill="#FFD700" opacity="0.85"/>
+          <rect x="55" y="215" width="11" height="11" rx="3" fill="#c8b89a"/>
+          <rect x="114" y="215" width="11" height="11" rx="3" fill="#c8b89a"/>
+          <ellipse cx="60"  cy="226" rx="8" ry="3.5" fill="#B8860B"/>
+          <ellipse cx="120" cy="226" rx="8" ry="3.5" fill="#B8860B"/>
+          <text x="90" y="210" text-anchor="middle" font-size="7" fill="#8B6914">𓆣 𓂀 𓆣</text>
+          <!-- Water in bowl -->
+          <ellipse id="toilet-water" cx="90" cy="213" rx="35" ry="7" fill="#1a6fa8" opacity="0.25"/>
+        </g>
+
+        <!-- TUT BODY GROUP — this whole group gets the rise animation applied via JS -->
+        <g id="tut-body-group">
+          <!-- Body / robes -->
+          <path d="M58 168 Q90 178 122 168 L128 200 Q90 210 52 200 Z" fill="#4a2c7a"/>
+          <!-- Gold collar -->
+          <path d="M64 122 Q90 132 116 122 L119 137 Q90 148 61 137 Z" fill="#FFD700" opacity="0.9"/>
+          <path d="M66 125 Q90 133 114 125" stroke="#B8860B" stroke-width="1.2" fill="none"/>
+          <path d="M63 131 Q90 140 117 131" stroke="#B8860B" stroke-width="1.2" fill="none"/>
+          <!-- Arms -->
+          <ellipse cx="47"  cy="157" rx="11" ry="7" fill="#d4a574" transform="rotate(-20,47,157)"/>
+          <ellipse cx="133" cy="157" rx="11" ry="7" fill="#d4a574" transform="rotate(20,133,157)"/>
+          <ellipse cx="41"  cy="165" rx="8" ry="6" fill="#d4a574"/>
+          <ellipse cx="139" cy="165" rx="8" ry="6" fill="#d4a574"/>
+          <!-- Crook & flail -->
+          <line x1="41" y1="165" x2="34" y2="136" stroke="#FFD700" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="33" cy="133" r="4.5" fill="#FFD700"/>
+          <line x1="139" y1="165" x2="146" y2="136" stroke="#FFD700" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="146" y1="136" x2="153" y2="125" stroke="#FFD700" stroke-width="2"/>
+          <line x1="146" y1="136" x2="156" y2="131" stroke="#FFD700" stroke-width="2"/>
+          <line x1="146" y1="136" x2="154" y2="141" stroke="#FFD700" stroke-width="2"/>
+
+          <!-- NEMES HEADDRESS -->
+          <path d="M53 85 Q53 40 90 38 Q127 40 127 85 L133 113 Q119 121 90 123 Q61 121 47 113 Z" fill="#1a5fa8"/>
+          <line x1="56" y1="67"  x2="49" y2="115" stroke="#FFD700" stroke-width="2" opacity="0.65"/>
+          <line x1="66" y1="59"  x2="58" y2="121" stroke="#FFD700" stroke-width="2" opacity="0.65"/>
+          <line x1="124" y1="67" x2="131" y2="115" stroke="#FFD700" stroke-width="2" opacity="0.65"/>
+          <line x1="114" y1="59" x2="122" y2="121" stroke="#FFD700" stroke-width="2" opacity="0.65"/>
+          <rect x="57" y="77" width="66" height="9" rx="4.5" fill="#FFD700"/>
+          <!-- Uraeus cobra -->
+          <path d="M86 38 Q90 19 94 38" stroke="#FFD700" stroke-width="2.5" fill="none"/>
+          <ellipse cx="90" cy="19" rx="4.5" ry="7" fill="#cc2200"/>
+          <ellipse cx="90" cy="16" rx="2.5" ry="2" fill="#ff4400"/>
+
+          <!-- FACE -->
+          <ellipse cx="90" cy="95" rx="29" ry="33" fill="#d4a574"/>
+          <ellipse cx="73" cy="100" rx="7" ry="4.5" fill="#c49060" opacity="0.3"/>
+          <ellipse cx="107" cy="100" rx="7" ry="4.5" fill="#c49060" opacity="0.3"/>
+
+          <!-- Eye whites -->
+          <ellipse cx="76" cy="90" rx="9.5" ry="6.5" fill="white"/>
+          <ellipse cx="104" cy="90" rx="9.5" ry="6.5" fill="white"/>
+          <!-- Kohl lines -->
+          <path d="M67 90 Q64 88 61 90" stroke="#111" stroke-width="1.3" fill="none"/>
+          <path d="M85 88 Q88 86 90 89"  stroke="#111" stroke-width="1.3" fill="none"/>
+          <path d="M95 88 Q92 86 90 89"  stroke="#111" stroke-width="1.3" fill="none"/>
+          <path d="M113 88 Q116 86 119 89" stroke="#111" stroke-width="1.3" fill="none"/>
+
+          <!-- Pupils (animated) -->
+          <circle id="left-pupil"  cx="75" cy="90" r="3.8" fill="#1a0a00"/>
+          <circle cx="73.5" cy="88.5" r="1.3" fill="white" opacity="0.6"/>
+          <circle id="right-pupil" cx="103" cy="90" r="3.8" fill="#1a0a00"/>
+          <circle cx="101.5" cy="88.5" r="1.3" fill="white" opacity="0.6"/>
+
+          <!-- Eyebrows (animated) -->
+          <path id="left-brow"  d="M67 81 Q76 76 85 80" stroke="#111" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <path id="right-brow" d="M95 80 Q104 76 113 81" stroke="#111" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+          <!-- Nose -->
+          <ellipse cx="90" cy="103" rx="4.5" ry="3.5" fill="#c49060"/>
+          <path d="M87 105 Q90 108 93 105" stroke="#b08050" stroke-width="1.3" fill="none"/>
+
+          <!-- Mouth (animated) -->
+          <path id="mouth" d="M80 115 Q90 121 100 115" stroke="#8B4513" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+
+          <!-- Cheeks (blush — show on strain faces) -->
+          <ellipse id="left-blush"  cx="68" cy="103" rx="7" ry="4" fill="#e05050" opacity="0"/>
+          <ellipse id="right-blush" cx="112" cy="103" rx="7" ry="4" fill="#e05050" opacity="0"/>
+
+          <!-- Sweat drop (show on strain) -->
+          <g id="sweat-drop" opacity="0">
+            <ellipse cx="122" cy="82" rx="3" ry="4.5" fill="#7dd3fc"/>
+            <path d="M120 78 Q122 74 124 78" fill="#7dd3fc"/>
+          </g>
+
+          <!-- Tongue (show on some faces) -->
+          <ellipse id="tongue" cx="90" cy="122" rx="6" ry="4" fill="#e05050" opacity="0"/>
+
+          <!-- False beard -->
+          <path d="M84 122 Q90 137 96 122" fill="#1a1a1a" opacity="0.8"/>
+          <rect x="86" y="122" width="8" height="16" rx="3.5" fill="#2a2a2a"/>
+          <rect x="85" y="135" width="10" height="3.5" rx="2" fill="#FFD700"/>
+
+          <!-- Scarab gem -->
+          <ellipse cx="90" cy="80" rx="5.5" ry="3.5" fill="#00aa88"/>
+
+          <!-- BUM PARTICLE ORIGIN — invisible marker at base of robe -->
+          <circle id="bum-origin" cx="90" cy="197" r="1" fill="none"/>
+        </g>
+      </svg>
+    </div>
+
+    <div id="face-caption">Sitting pretty... 👑</div>
+  </div>
+
+  <!-- RIGHT: HUD + game zone -->
+  <div id="right-panel">
+    <div id="hud">
+      <div class="hud-box"><span class="hud-label">⏱ Time</span><div class="hud-value" id="timer-display">60</div></div>
+      <div class="hud-box"><span class="hud-label">💩 Score</span><div class="hud-value" id="score-display">0</div></div>
+      <div class="hud-box"><span class="hud-label">🏆 Best</span><div class="hud-value" id="best-display">0</div></div>
+    </div>
+    <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
+    <div id="hint-text">👆 Tap the buttons when they appear!</div>
+    <div id="game-area">
+      <div id="combo-display">🔥 x<span id="combo-count">0</span></div>
+      <div id="score-popup">+10!</div>
+      <button id="poop-btn"  class="game-btn">💩 POOP!</button>
+      <button id="flush-btn" class="game-btn">🚽 FLUSH!</button>
+    </div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="overlay-title" id="overlay-title">PHARAOH'S REVENGE</div>
+  <div style="font-size:clamp(36px,8vw,56px)">💩👑</div>
+  <div class="overlay-sub" id="overlay-sub">
+    King Tutankhamun needs your help on his Royal Throne!<br><br>
+    Tap <strong>💩 POOP</strong> and <strong>🚽 FLUSH</strong> when they appear.<br>
+    Miss them and the Pharaoh gets embarrassed!<br><br>
+    You have <strong>60 seconds</strong>. May Ra guide your fingers!
+  </div>
+  <div id="scores-panel"><h3>👑 Hall of Pharaohs 👑</h3><div id="scores-list"></div></div>
+  <button class="big-btn" id="start-btn" onclick="startGame()">👑 SIT ON THE THRONE!</button>
+</div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let score=0,timeLeft=60,combo=0;
+let gameRunning=false,highScores=[];
+let timerInterval=null,spawnTimeout=null,buttonTimer=null,faceResetTimeout=null;
+let activeButton=null;
+const POINTS_BASE=10,BTN_MIN=900,BTN_MAX=2000,SPAWN_MIN=400,SPAWN_MAX=1300;
+
+// DOM refs
+const poopBtn      = document.getElementById('poop-btn');
+const flushBtn     = document.getElementById('flush-btn');
+const overlay      = document.getElementById('overlay');
+const overlayTitle = document.getElementById('overlay-title');
+const overlaySub   = document.getElementById('overlay-sub');
+const scoreDisplay = document.getElementById('score-display');
+const bestDisplay  = document.getElementById('best-display');
+const timerDisplay = document.getElementById('timer-display');
+const timerBar     = document.getElementById('timer-bar');
+const comboDisplay = document.getElementById('combo-display');
+const comboCount   = document.getElementById('combo-count');
+const scorePopup   = document.getElementById('score-popup');
+const hintText     = document.getElementById('hint-text');
+const gameArea     = document.getElementById('game-area');
+const scoresList   = document.getElementById('scores-list');
+const faceCaption  = document.getElementById('face-caption');
+
+// SVG face elements
+const mouth      = document.getElementById('mouth');
+const leftBrow   = document.getElementById('left-brow');
+const rightBrow  = document.getElementById('right-brow');
+const leftPupil  = document.getElementById('left-pupil');
+const rightPupil = document.getElementById('right-pupil');
+const leftBlush  = document.getElementById('left-blush');
+const rightBlush = document.getElementById('right-blush');
+const sweatDrop  = document.getElementById('sweat-drop');
+const tongue     = document.getElementById('tongue');
+const tutBodyGrp = document.getElementById('tut-body-group');
+const toiletWater= document.getElementById('toilet-water');
+const tutSvg     = document.getElementById('tut-svg');
+const bumOrigin  = document.getElementById('bum-origin');
+
+// Canvas for bum particles
+const canvas     = document.getElementById('part-canvas');
+const ctx        = canvas.getContext('2d');
+let particles    = [];
+let animFrameId  = null;
+
+// ─── PARTICLE CANVAS RESIZE ───────────────────────────────────────────────────
+function resizeCanvas(){
+  const rect = tutSvg.getBoundingClientRect();
+  canvas.width  = rect.width;
+  canvas.height = rect.height;
+}
+window.addEventListener('resize', resizeCanvas);
+setTimeout(resizeCanvas, 100);
+
+// ─── SCORES ───────────────────────────────────────────────────────────────────
+function loadScores(){
+  try{ highScores=JSON.parse(localStorage.getItem('pharaohScores')||'[]'); }catch(e){ highScores=[]; }
+  renderScores(); updateBest();
+}
+function saveScore(s){
+  highScores.push(s); highScores.sort((a,b)=>b-a); highScores=highScores.slice(0,5);
+  try{ localStorage.setItem('pharaohScores',JSON.stringify(highScores)); }catch(e){}
+  renderScores(); updateBest();
+}
+function updateBest(){ bestDisplay.textContent=highScores[0]||0; }
+function renderScores(){
+  const m=['🥇','🥈','🥉','4️⃣','5️⃣'];
+  scoresList.innerHTML=highScores.length
+    ? highScores.map((s,i)=>`<div class="score-row"><span class="rank">${m[i]}</span><span>Score</span><span class="score-val">${s}</span></div>`).join('')
+    : '<div class="score-row"><span style="opacity:0.5">No scores yet!</span></div>';
+}
+
+// ─── FACES ────────────────────────────────────────────────────────────────────
+// Multiple poop strain faces — randomly chosen each time
+const POOP_FACES = [
+  // Classic strain
+  { m:'M82 117 Q90 112 98 117', lb:'M67 85 Q76 79 85 83', rb:'M95 83 Q104 79 113 85',
+    lx:'75',ly:'93', rx:'103',ry:'93', blush:0.5, sweat:0.6, tongue:0, cap:'Nnngghh! 😤' },
+  // Eyes squeezed shut (X eyes)
+  { m:'M80 117 Q90 112 100 117', lb:'M67 87 Q76 82 85 86', rb:'M95 86 Q104 82 113 87',
+    lx:'75',ly:'94', rx:'103',ry:'94', blush:0.7, sweat:0.8, tongue:0, cap:'PUSHING! 😖',
+    crossEyes:true },
+  // Wide-eyed shock
+  { m:'M83 116 Q90 111 97 116', lb:'M67 83 Q76 77 85 81', rb:'M95 81 Q104 77 113 83',
+    lx:'75',ly:'91', rx:'103',ry:'91', blush:0.4, sweat:0.3, tongue:0, cap:'Oh gods... 😳' },
+  // Tongue out grimace
+  { m:'M80 115 Q90 122 100 115', lb:'M67 86 Q76 80 85 84', rb:'M95 84 Q104 80 113 86',
+    lx:'75',ly:'92', rx:'103',ry:'92', blush:0.6, sweat:0.5, tongue:0.9, cap:'BLEURRGH! 😛' },
+  // Teary-eyed strain
+  { m:'M82 116 Q90 111 98 116', lb:'M68 86 Q76 80 85 84', rb:'M95 84 Q104 80 112 86',
+    lx:'75',ly:'93', rx:'103',ry:'93', blush:0.55, sweat:0.4, tongue:0, cap:'It hurts! 😢',
+    tearEyes:true },
+  // Maniacal grin strain
+  { m:'M76 114 Q90 124 104 114', lb:'M67 85 Q76 80 85 84', rb:'M95 84 Q104 80 113 85',
+    lx:'75',ly:'92', rx:'103',ry:'92', blush:0.3, sweat:0.7, tongue:0, cap:'I LOVE THIS THRONE! 😁' },
+];
+
+const FLUSH_FACES = [
+  { m:'M77 112 Q90 124 103 112', lb:'M67 78 Q76 72 85 76', rb:'M95 76 Q104 72 113 78',
+    lx:'75',ly:'88', rx:'103',ry:'88', blush:0, sweat:0, tongue:0, cap:'Aaaaahhh... 😌' },
+  { m:'M75 111 Q90 126 105 111', lb:'M67 76 Q76 70 85 74', rb:'M95 74 Q104 70 113 76',
+    lx:'74',ly:'87', rx:'102',ry:'87', blush:0, sweat:0, tongue:0, cap:'OH THAT\'S THE SPOT! 😍' },
+  { m:'M78 112 Q90 125 102 112', lb:'M67 77 Q76 71 85 75', rb:'M95 75 Q104 71 113 77',
+    lx:'75',ly:'87', rx:'103',ry:'87', blush:0, sweat:0, tongue:0.3, cap:'Pure relief! 🌊' },
+];
+
+const NORMAL_FACE =
+  { m:'M80 115 Q90 121 100 115', lb:'M67 81 Q76 76 85 80', rb:'M95 80 Q104 76 113 81',
+    lx:'75',ly:'90', rx:'103',ry:'90', blush:0, sweat:0, tongue:0, cap:'Sitting pretty... 👑' };
+
+const EMBARRASSED_FACE =
+  { m:'M82 117 Q90 113 98 117', lb:'M67 83 Q76 81 85 79', rb:'M95 79 Q104 81 113 83',
+    lx:'78',ly:'91', rx:'106',ry:'91', blush:0.3, sweat:0, tongue:0, cap:'Most unseemly... 😳' };
+
+let lastPoopFaceIdx = -1;
+function pickPoopFace(){
+  let idx; do { idx = Math.floor(Math.random()*POOP_FACES.length); } while(idx===lastPoopFaceIdx);
+  lastPoopFaceIdx = idx;
+  return POOP_FACES[idx];
+}
+
+function applyFace(f){
+  mouth.setAttribute('d', f.m);
+  leftBrow.setAttribute('d', f.lb);
+  rightBrow.setAttribute('d', f.rb);
+  leftPupil.setAttribute('cx', f.lx);  leftPupil.setAttribute('cy',  f.ly);
+  rightPupil.setAttribute('cx', f.rx); rightPupil.setAttribute('cy', f.ry);
+  leftBlush.setAttribute('opacity',  f.blush);
+  rightBlush.setAttribute('opacity', f.blush);
+  sweatDrop.setAttribute('opacity',  f.sweat);
+  tongue.setAttribute('opacity',     f.tongue);
+
+  // Cross-eyes
+  if(f.crossEyes){
+    leftPupil.setAttribute('cx','78');  leftPupil.setAttribute('cy','92');
+    rightPupil.setAttribute('cx','100'); rightPupil.setAttribute('cy','92');
+  }
+  // Tear eyes — make pupils go up
+  if(f.tearEyes){
+    leftPupil.setAttribute('cy','88');
+    rightPupil.setAttribute('cy','88');
+  }
+
+  faceCaption.textContent = f.cap;
+}
+
+function setFaceNormal(){
+  applyFace(NORMAL_FACE);
+}
+
+function flashFace(faceObj, duration=800){
+  clearTimeout(faceResetTimeout);
+  applyFace(faceObj);
+  faceResetTimeout = setTimeout(setFaceNormal, duration);
+}
+
+// ─── TUT RISE / FALL ANIMATION ────────────────────────────────────────────────
+let riseTimeout = null;
+let currentRiseY = 0;
+
+function tutRise(pixels, duration){
+  // Animate via CSS transform on the group
+  tutBodyGrp.style.transition = `transform ${duration}ms cubic-bezier(0.22,1,0.36,1)`;
+  tutBodyGrp.style.transform  = `translateY(-${pixels}px)`;
+  currentRiseY = pixels;
+}
+
+function tutSettle(duration=400){
+  tutBodyGrp.style.transition = `transform ${duration}ms cubic-bezier(0.34,1.56,0.64,1)`;
+  tutBodyGrp.style.transform  = `translateY(0px)`;
+  currentRiseY = 0;
+}
+
+// ─── BUM PARTICLE SYSTEM ──────────────────────────────────────────────────────
+// Gets the pixel position of the bum-origin marker in canvas coordinates
+function getBumPos(){
+  resizeCanvas();
+  const svgRect   = tutSvg.getBoundingClientRect();
+  const canvRect  = canvas.getBoundingClientRect();
+  const svgW = tutSvg.viewBox.baseVal.width;   // 180
+  const svgH = tutSvg.viewBox.baseVal.height;  // 230
+  const scaleX = svgRect.width  / svgW;
+  const scaleY = svgRect.height / svgH;
+
+  // bum-origin SVG coords are 90, 197 — but the body group may be offset up
+  const bumSvgX = 90;
+  const bumSvgY = 197 - currentRiseY / scaleY; // compensate for rise in SVG units
+
+  return {
+    x: bumSvgX * scaleX + (svgRect.left - canvRect.left),
+    y: bumSvgY * scaleY + (svgRect.top  - canvRect.top),
+  };
+}
+
+function getToiletPos(){
+  const svgRect  = tutSvg.getBoundingClientRect();
+  const canvRect = canvas.getBoundingClientRect();
+  const scaleY   = svgRect.height / 230;
+  return {
+    x: canvas.width * 0.5 + (svgRect.left - canvRect.left),
+    y: 213 * scaleY + (svgRect.top - canvRect.top),
+  };
+}
+
+class Particle {
+  constructor(type){
+    this.type   = type; // 'poop' | 'water'
+    this.active = true;
+    const bp    = getBumPos();
+    this.x      = bp.x + (Math.random()-0.5)*8;
+    this.y      = bp.y;
+    const tp    = getToiletPos();
+    // Aim roughly toward the toilet with some spread
+    const dx    = tp.x - bp.x + (Math.random()-0.5)*20;
+    const dy    = tp.y - bp.y;
+    const spd   = 3 + Math.random()*3;
+    const dist  = Math.sqrt(dx*dx+dy*dy)||1;
+    this.vx     = (dx/dist)*spd*(0.8+Math.random()*0.4);
+    this.vy     = (dy/dist)*spd*(0.8+Math.random()*0.4);
+    this.life   = 1.0;
+    this.decay  = 0.04 + Math.random()*0.04;
+    this.r      = type==='poop' ? 5+Math.random()*4 : 3+Math.random()*3;
+    this.gravity= 0.18;
+    this.emoji  = type==='poop'
+      ? ['💩','💩','💩','🟤'][Math.floor(Math.random()*4)]
+      : ['💧','🌊','💦'][Math.floor(Math.random()*3)];
+    this.emojiSize = type==='poop' ? 14+Math.random()*8 : 10+Math.random()*8;
+    this.angle  = Math.random()*Math.PI*2;
+    this.spin   = (Math.random()-0.5)*0.3;
+  }
+  update(){
+    this.x   += this.vx;
+    this.y   += this.vy;
+    this.vy  += this.gravity;
+    this.vx  *= 0.97;
+    this.life -= this.decay;
+    this.angle+= this.spin;
+    if(this.life<=0) this.active=false;
+  }
+  draw(ctx){
+    ctx.save();
+    ctx.globalAlpha = Math.max(0,this.life);
+    ctx.font = `${this.emojiSize}px serif`;
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+    ctx.fillText(this.emoji, -this.emojiSize/2, this.emojiSize/2);
+    ctx.restore();
+  }
+}
+
+function spawnParticles(type, count){
+  for(let i=0;i<count;i++){
+    setTimeout(()=>{ particles.push(new Particle(type)); }, i*30);
+  }
+}
+
+function particleLoop(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  particles = particles.filter(p=>{
+    p.update();
+    if(p.active) p.draw(ctx);
+    return p.active;
+  });
+  animFrameId = requestAnimationFrame(particleLoop);
+}
+
+// Start the particle loop immediately
+particleLoop();
+
+// ─── TOILET WATER RIPPLE ─────────────────────────────────────────────────────
+let toiletRippleTimeout = null;
+function rippleToilet(type){
+  const col = type==='poop' ? '#6B3A2A' : '#1a6fa8';
+  const op  = type==='poop' ? '0.55' : '0.55';
+  toiletWater.style.transition='fill 0.1s,opacity 0.1s';
+  toiletWater.setAttribute('fill', col);
+  toiletWater.setAttribute('opacity', op);
+  clearTimeout(toiletRippleTimeout);
+  toiletRippleTimeout = setTimeout(()=>{
+    toiletWater.setAttribute('fill','#1a6fa8');
+    toiletWater.setAttribute('opacity','0.25');
+  }, 600);
+}
+
+// ─── FULL POOP ACTION ─────────────────────────────────────────────────────────
+function doPoop(){
+  const face = pickPoopFace();
+
+  // 1. Rise with a bit of struggle bounce
+  tutRise(18, 180);
+
+  // 2. Particles burst from bum after a tiny delay
+  setTimeout(()=>{
+    spawnParticles('poop', 10 + Math.floor(Math.random()*6));
+    rippleToilet('poop');
+  }, 120);
+
+  // 3. Show the random poop face
+  flashFace(face, 900);
+
+  // 4. Settle back down
+  clearTimeout(riseTimeout);
+  riseTimeout = setTimeout(()=> tutSettle(450), 400);
+}
+
+// ─── FULL FLUSH ACTION ────────────────────────────────────────────────────────
+function doFlush(){
+  const face = FLUSH_FACES[Math.floor(Math.random()*FLUSH_FACES.length)];
+
+  // 1. Rise higher for flush — weightless relief
+  tutRise(24, 200);
+
+  // 2. Water particles from bum
+  setTimeout(()=>{
+    spawnParticles('water', 14 + Math.floor(Math.random()*7));
+    rippleToilet('flush');
+  }, 80);
+
+  // 3. Relief face
+  flashFace(face, 950);
+
+  // 4. Float back down gently
+  clearTimeout(riseTimeout);
+  riseTimeout = setTimeout(()=> tutSettle(500), 420);
+}
+
+// ─── FLOATING GAME TEXT ───────────────────────────────────────────────────────
+function spawnFloat(text,x,y,hit){
+  const el=document.createElement('div');
+  el.className=hit?'hit-text':'miss-text';
+  el.textContent=text;
+  el.style.cssText=`left:${x}px;top:${y}px`;
+  gameArea.appendChild(el);
+  setTimeout(()=>el.remove(),750);
+}
+
+// ─── SCORE POPUP ─────────────────────────────────────────────────────────────
+let popTimer=null;
+function showPopup(pts){
+  const p=['','','By Ra!','Golden!','Majestic!','GODLIKE! ⚡'];
+  scorePopup.textContent=`+${pts} ${p[Math.min(combo,5)]}`;
+  scorePopup.style.transform='translateX(-50%) scale(1)';
+  scorePopup.style.opacity='1';
+  clearTimeout(popTimer);
+  popTimer=setTimeout(()=>{
+    scorePopup.style.transform='translateX(-50%) scale(0)';
+    scorePopup.style.opacity='0';
+  },480);
+}
+
+// ─── BUTTON SPAWNING ─────────────────────────────────────────────────────────
+function randomPos(type){
+  const btnW=type==='poop'?100:112, btnH=42;
+  const maxX=Math.max(8,gameArea.clientWidth-btnW-8);
+  const maxY=Math.max(8,gameArea.clientHeight-btnH-8);
+  return{x:8+Math.random()*maxX, y:8+Math.random()*maxY};
+}
+function spawnButton(){
+  if(!gameRunning||activeButton)return;
+  const type=Math.random()<0.55?'poop':'flush';
+  const btn=type==='poop'?poopBtn:flushBtn;
+  const pos=randomPos(type);
+  activeButton=type;
+  btn.style.left=pos.x+'px';
+  btn.style.top=pos.y+'px';
+  btn.classList.add('visible');
+  const dur=BTN_MIN+Math.random()*(BTN_MAX-BTN_MIN);
+  buttonTimer=setTimeout(()=>{
+    if(activeButton!==type)return;
+    btn.classList.remove('visible');
+    activeButton=null; combo=0;
+    comboDisplay.classList.remove('active');
+    flashFace(EMBARRASSED_FACE, 800);
+    spawnFloat('MISS! 😳',pos.x,pos.y,false);
+    scheduleSpawn();
+  },dur);
+}
+function scheduleSpawn(){
+  if(!gameRunning)return;
+  spawnTimeout=setTimeout(spawnButton,SPAWN_MIN+Math.random()*(SPAWN_MAX-SPAWN_MIN));
+}
+
+// ─── BUTTON PRESS ────────────────────────────────────────────────────────────
+function onPress(type){
+  if(!gameRunning||activeButton!==type)return;
+  clearTimeout(buttonTimer);
+  const btn=type==='poop'?poopBtn:flushBtn;
+  const r=btn.getBoundingClientRect(), ar=gameArea.getBoundingClientRect();
+  const bx=r.left-ar.left+r.width/2, by=r.top-ar.top+r.height/2;
+  btn.classList.remove('visible');
+  activeButton=null; combo++;
+  const pts=POINTS_BASE*(combo>=3?Math.min(combo,5):1);
+  score+=pts; scoreDisplay.textContent=score;
+  if(combo>=2){comboCount.textContent=combo;comboDisplay.classList.add('active');}
+
+  // Trigger the big visual effects
+  if(type==='poop') doPoop();
+  else              doFlush();
+
+  spawnFloat(`+${pts}`,bx-18,by-34,true);
+  showPopup(pts);
+
+  const pl=['Royal delivery! 💩','By Osiris! 💩','The Nile overflows!','Glorious! 👑'];
+  const fl=['Royal flush! 🚽','Down the Nile! 💧','Pure relief! ✨','Fit for a god!'];
+  hintText.textContent=(type==='poop'?pl:fl)[Math.floor(Math.random()*4)];
+
+  scheduleSpawn();
+}
+
+poopBtn.addEventListener('click',()=>onPress('poop'));
+flushBtn.addEventListener('click',()=>onPress('flush'));
+
+// ─── GAME LOOP ────────────────────────────────────────────────────────────────
+function startGame(){
+  score=0;timeLeft=60;combo=0;activeButton=null;gameRunning=true;
+  scoreDisplay.textContent='0';
+  timerDisplay.textContent='60';
+  timerDisplay.style.color='';
+  timerBar.style.width='100%';
+  timerBar.style.backgroundPosition='right center';
+  comboDisplay.classList.remove('active');
+  hintText.textContent='👆 Tap the buttons when they appear!';
+  poopBtn.classList.remove('visible');
+  flushBtn.classList.remove('visible');
+  particles=[];
+  tutSettle(0);
+  setFaceNormal();
+  overlay.classList.add('hidden');
+  resizeCanvas();
+
+  timerInterval=setInterval(()=>{
+    timeLeft--;
+    timerDisplay.textContent=timeLeft;
+    const pct=timeLeft/60;
+    timerBar.style.width=(pct*100)+'%';
+    timerBar.style.backgroundPosition=`${pct*200}% center`;
+    if(timeLeft<=10) timerDisplay.style.color='#ff5555';
+    if(timeLeft<=0)  endGame();
+  },1000);
+
+  scheduleSpawn();
+}
+
+function endGame(){
+  gameRunning=false;
+  clearInterval(timerInterval);
+  clearTimeout(spawnTimeout);
+  clearTimeout(buttonTimer);
+  poopBtn.classList.remove('visible');
+  flushBtn.classList.remove('visible');
+  activeButton=null;
+  tutSettle(300);
+
+  const endFace = score>=200
+    ? FLUSH_FACES[0]
+    : score>=80 ? NORMAL_FACE : EMBARRASSED_FACE;
+  applyFace(endFace);
+
+  saveScore(score);
+  const rank=highScores.indexOf(score)+1;
+  const rt=['🥇 NEW RECORD!','🥈 Second Place!','🥉 Third Place!','Honourable attempt!','Keep practising!'][Math.min(rank-1,4)];
+  const v=score>=300?'The gods bow before you! ⚡':score>=200?'Most impressive, Pharaoh! 👑':score>=80?'Acceptable... for a mortal. 😤':'The Pharaoh is NOT amused. 😒';
+
+  setTimeout(()=>{
+    overlayTitle.textContent='⏱ TIME\'S UP! 💩';
+    overlaySub.innerHTML=`You scored <strong style="color:#FFD700;font-size:1.4em">${score}</strong> royal points!<br><em>${rt}</em><br><br>${v}`;
+    document.getElementById('start-btn').textContent='🔄 SIT AGAIN!';
+    renderScores();
+    overlay.classList.remove('hidden');
+  },700);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+loadScores();
+setTimeout(resizeCanvas, 300);
+</script>
+</body>
+</html>
