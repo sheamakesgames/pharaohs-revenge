@@ -64,10 +64,18 @@ body{background:linear-gradient(180deg,#1a0a00,#3d1f00 50%,#2a0a3e);font-family:
 #game-flash{position:absolute;inset:0;background:rgba(255,0,0,0);pointer-events:none;z-index:30;border-radius:0 0 50% 50%;}
 #game-flash.red{animation:redFlash .5s ease-out forwards;}
 @keyframes redFlash{0%{background:rgba(255,0,0,.4);}100%{background:rgba(255,0,0,0);}}
-.game-btn{position:absolute;border:none;border-radius:50px;font-family:'Fredoka One',cursive;font-size:clamp(13px,3.5vw,18px);cursor:pointer;padding:clamp(8px,2vh,13px) clamp(10px,3vw,20px);box-shadow:0 5px 18px rgba(0,0,0,.6);user-select:none;white-space:nowrap;z-index:10;-webkit-tap-highlight-color:transparent;touch-action:manipulation;left:50%;transform:translateX(-50%) translateY(-80px);opacity:0;}
-.game-btn.falling{animation:dropDown 1s linear forwards;}
+.game-btn{
+  position:absolute;border:none;border-radius:50px;
+  font-family:'Fredoka One',cursive;font-size:clamp(13px,3.5vw,18px);
+  cursor:pointer;padding:clamp(8px,2vh,13px) clamp(10px,3vw,20px);
+  box-shadow:0 5px 18px rgba(0,0,0,.6);
+  user-select:none;white-space:nowrap;z-index:10;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  transform:scale(0);opacity:0;
+  transition:transform .15s cubic-bezier(0.34,1.56,0.64,1), opacity .15s;
+}
+.game-btn.visible{transform:scale(1);opacity:1;}
 .game-btn:active{filter:brightness(1.3);}
-@keyframes dropDown{0%{opacity:1;transform:translateX(-50%) translateY(-10px);}85%{opacity:1;transform:translateX(-50%) translateY(var(--drop-dist));}100%{opacity:0;transform:translateX(-50%) translateY(var(--drop-dist));}}
 #poop-btn{background:linear-gradient(135deg,#8B4513,#5C2E00);color:#FFD700;border:2.5px solid #FFD700;}
 #roll-btn{background:linear-gradient(135deg,#c8b89a,#a09070);color:#3d1f00;border:2.5px solid #FFD700;}
 #flush-btn{background:linear-gradient(135deg,#1a6fa8,#0d3d5c);color:#fff;border:2.5px solid #7dd3fc;}
@@ -76,10 +84,10 @@ body{background:linear-gradient(180deg,#1a0a00,#3d1f00 50%,#2a0a3e);font-family:
 @keyframes pf{0%,100%{box-shadow:0 5px 18px rgba(0,0,0,.6),0 0 0 0 rgba(26,111,168,.8);}50%{box-shadow:0 5px 18px rgba(0,0,0,.6),0 0 0 10px rgba(26,111,168,0);}}
 @keyframes pr{0%,100%{box-shadow:0 5px 18px rgba(0,0,0,.6),0 0 0 0 rgba(200,184,154,.8);}50%{box-shadow:0 5px 18px rgba(0,0,0,.6),0 0 0 10px rgba(200,184,154,0);}}
 @keyframes pu{0%,100%{box-shadow:0 5px 18px rgba(0,0,0,.6),0 0 0 0 rgba(255,0,0,.9);}50%{box-shadow:0 5px 18px rgba(0,0,0,.6),0 0 0 14px rgba(255,0,0,0);}}
-#poop-btn.falling{animation:dropDown 1s linear forwards,pp .55s infinite;}
-#roll-btn.falling{animation:dropDown 1s linear forwards,pr .55s infinite;}
-#flush-btn.falling:not(.safe){animation:dropDown 1s linear forwards,pf .55s infinite;}
-#flush-btn.falling.safe{animation:dropDown 1s linear forwards,pu .3s infinite;}
+#poop-btn.visible{animation:pp .55s infinite;}
+#roll-btn.visible{animation:pr .55s infinite;}
+#flush-btn.visible:not(.safe){animation:pf .55s infinite;}
+#flush-btn.visible.safe{animation:pu .3s infinite;}
 .hit-text,.miss-text{position:fixed;font-size:clamp(15px,4vw,22px);font-weight:bold;pointer-events:none;animation:floatUp .7s ease-out forwards;z-index:200;text-shadow:1px 1px 0 #000;}
 .hit-text{color:#FFD700;}.miss-text{color:#ff5555;}
 @keyframes floatUp{0%{transform:translateY(0);opacity:1;}100%{transform:translateY(-60px);opacity:0;}}
@@ -297,19 +305,28 @@ function showPopup(pts){
   clearTimeout(popTimer);popTimer=setTimeout(()=>{scorePopup.style.transform='scale(0)';scorePopup.style.opacity='0';},600);
 }
 
+function randomPos(type){
+  const btnW=type==='flush'?112:type==='roll'?105:100,btnH=44;
+  const aW=gameArea.clientWidth,aH=gameArea.clientHeight;
+  const padX=Math.max(14,aW*.1),padY=36;
+  const maxX=aW-btnW-padX,maxY=aH*.88-btnH-padY;
+  return{x:padX+Math.random()*Math.max(4,maxX-padX),y:padY+Math.random()*Math.max(4,maxY-padY)};
+}
+
 function launchButton(type){
   if(!gameRunning)return;
   const btn=type==='poop'?poopBtn:type==='flush'?flushBtn:rollBtn;
   activeButton=type;
-  const bowlH=gameArea.clientHeight;
-  btn.style.setProperty('--drop-dist',bowlH+'px');
-  btn.style.transition='none';btn.style.left='50%';btn.style.top='0px';btn.style.transform='translateX(-50%) translateY(-80px)';btn.style.opacity='0';
+  const pos=randomPos(type);
+  btn.style.left=pos.x+'px';
+  btn.style.top=pos.y+'px';
   if(type==='flush'&&isLast10)btn.classList.add('safe');else btn.classList.remove('safe');
-  void btn.offsetWidth;btn.classList.remove('falling');void btn.offsetWidth;btn.classList.add('falling');
+  btn.classList.add('visible');
   clearTimeout(missTimeout);
   missTimeout=setTimeout(()=>{
     if(activeButton!==type)return;
-    btn.classList.remove('falling','safe');activeButton=null;
+    btn.classList.remove('visible','safe');
+    activeButton=null;
     if(type==='flush'&&!isLast10){/* silent */}
     else resetMulti('miss');
     scheduleNext();
@@ -324,7 +341,7 @@ function scheduleNext(){
     if(isLast10){type='flush';}
     else{if(consFlush>=2){type=Math.random()<.55?'poop':'roll';}else{type=r<.38?'poop':r<.68?'flush':'roll';}if(type==='flush')consFlush++;else consFlush=0;}
     launchButton(type);
-  },300);
+  },150);
 }
 
 function onPress(type){
@@ -333,14 +350,14 @@ function onPress(type){
     resetMulti('early');score=Math.max(0,score-499);setText(scoreDisp,score);
     const ar=gameArea.getBoundingClientRect();spawnFloat('-499 💀',ar.left+ar.width/2-30,ar.top+60,false);
     setText(hintText,'⚠️ TOO EARLY! -499 points!');
-    if(activeButton==='flush'){clearTimeout(missTimeout);flushBtn.classList.remove('falling','safe');activeButton=null;scheduleNext();}
+    if(activeButton==='flush'){clearTimeout(missTimeout);flushBtn.classList.remove('visible','safe');activeButton=null;scheduleNext();}
     return;
   }
   if(activeButton!==type)return;
   clearTimeout(missTimeout);
   const btn=type==='poop'?poopBtn:type==='flush'?flushBtn:rollBtn;
   const br=btn.getBoundingClientRect();
-  btn.classList.remove('falling','safe');activeButton=null;
+  btn.classList.remove('visible','safe');activeButton=null;
   combo++;if(combo>peakCombo)peakCombo=combo;
   const pts=POINTS_BASE*combo;score+=pts;
   setText(scoreDisp,score);setText(multiVal,`x${combo}`);setText(combCount,combo);
@@ -367,7 +384,7 @@ function startGame(){
   setText(multiVal,'x1');setText(combCount,'1');
   if(combDisp)combDisp.classList.remove('active');
   setText(hintText,'👆 Tap as they fall — ignore FLUSH!');
-  poopBtn.classList.remove('falling','safe');flushBtn.classList.remove('falling','safe');rollBtn.classList.remove('falling');
+  poopBtn.classList.remove('visible','safe');flushBtn.classList.remove('visible','safe');rollBtn.classList.remove('visible');
   if(gameArea)gameArea.classList.remove('danger');if(last10Ban)last10Ban.classList.remove('visible');
   particles=[];tutSettle(0);setFaceNormal();if(overlay)overlay.classList.add('hidden');resizeCanvas();
 
@@ -379,7 +396,7 @@ function startGame(){
       if(timeLeft===10&&!isLast10){
         isLast10=true;if(gameArea)gameArea.classList.add('danger');if(last10Ban)last10Ban.classList.add('visible');
         if(timerDisp)timerDisp.style.color='#ff5555';setText(hintText,'🚨 FLUSH IS NOW SAFE — SMASH IT! 🚨');
-        if(activeButton){const b=activeButton==='poop'?poopBtn:activeButton==='flush'?flushBtn:rollBtn;b.classList.remove('falling','safe');clearTimeout(missTimeout);activeButton=null;}
+        if(activeButton){const b=activeButton==='poop'?poopBtn:activeButton==='flush'?flushBtn:rollBtn;b.classList.remove('visible','safe');clearTimeout(missTimeout);activeButton=null;}
         clearTimeout(dropTimeout);launchButton('flush');
       }
       if(timeLeft<=0){clearInterval(timerInterval);endGame();}
@@ -391,7 +408,7 @@ function startGame(){
 function endGame(){
   gameRunning=false;
   clearInterval(timerInterval);clearTimeout(dropTimeout);clearTimeout(missTimeout);clearTimeout(faceResetTimeout);clearTimeout(riseTimeout);
-  poopBtn.classList.remove('falling','safe');flushBtn.classList.remove('falling','safe');rollBtn.classList.remove('falling');
+  poopBtn.classList.remove('visible','safe');flushBtn.classList.remove('visible','safe');rollBtn.classList.remove('visible');
   activeButton=null;tutSettle(300);
   if(gameArea)gameArea.classList.remove('danger');if(last10Ban)last10Ban.classList.remove('visible');
   applyFace(score>=500?FF[0]:score>=100?NORMAL:EMBAR);
