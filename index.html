@@ -11,6 +11,21 @@
 html,body{width:100%;height:100%;overflow:hidden;}
 body{background:linear-gradient(180deg,#1a0a00,#3d1f00 50%,#2a0a3e);font-family:'Fredoka One',cursive;display:flex;flex-direction:column;align-items:center;height:100vh;}
 #crown-bar{width:100%;flex-shrink:0;background:linear-gradient(90deg,var(--deep),var(--purple),var(--deep));border-bottom:3px solid var(--gold);padding:3px 30px;text-align:center;font-family:'Cinzel Decorative',serif;font-size:clamp(9px,2.5vw,13px);color:var(--gold);letter-spacing:2px;position:relative;}
+/* Level progress bar under crown */
+#level-bar-wrap{width:100%;height:6px;background:rgba(0,0,0,.4);flex-shrink:0;}
+#level-bar{height:100%;width:0%;background:linear-gradient(90deg,#cc0000,#ff9900,#FFD700);transition:width .5s ease;}
+/* Level up screen */
+#levelup-screen{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:450;pointer-events:none;opacity:0;}
+#levelup-screen.show{animation:lvlAnim 2s ease-out forwards;pointer-events:all;}
+@keyframes lvlAnim{0%{opacity:0;}15%{opacity:1;}75%{opacity:1;}100%{opacity:0;}}
+#levelup-title{font-family:'Cinzel Decorative',serif;font-size:clamp(30px,10vw,60px);color:#FFD700;text-shadow:0 0 30px rgba(255,215,0,.8),3px 3px 0 #000;text-align:center;transform:scale(0);}
+#levelup-sub{font-family:'Fredoka One',cursive;font-size:clamp(14px,4vw,22px);color:#fff;text-align:center;}
+#levelup-screen.show #levelup-title{animation:lvlTitleAnim 2s ease-out forwards;}
+@keyframes lvlTitleAnim{0%{transform:scale(0);}20%{transform:scale(1.2);}30%{transform:scale(1);}75%{transform:scale(1);}100%{transform:scale(1.1);}}'
+}
+/* Chaos mode shake */
+@keyframes chaosShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
+#game-area.chaos{animation:chaosShake .15s infinite,dangerPulse .3s infinite alternate!important;}
 #crown-bar::before{content:'👑';position:absolute;left:8px;top:50%;transform:translateY(-50%);}
 #crown-bar::after{content:'👑';position:absolute;right:8px;top:50%;transform:translateY(-50%);}
 #throne{width:100%;max-width:480px;flex:1;min-height:0;display:grid;grid-template-columns:76px 1fr 76px;grid-template-rows:auto 1fr;}
@@ -116,6 +131,11 @@ body{background:linear-gradient(180deg,#1a0a00,#3d1f00 50%,#2a0a3e);font-family:
 </head>
 <body>
 <div id="crown-bar">PHARAOH'S REVENGE — THE ROYAL FLUSH</div>
+<div id="level-bar-wrap"><div id="level-bar"></div></div>
+<div id="levelup-screen">
+  <div id="levelup-title">LEVEL UP!</div>
+  <div id="levelup-sub"></div>
+</div>
 <div id="throne">
   <div class="arm arm-left">
     <div class="stat-box"><div class="stat-val" id="score-display">0</div><div class="stat-lbl">💩 Score</div></div>
@@ -211,11 +231,18 @@ body{background:linear-gradient(180deg,#1a0a00,#3d1f00 50%,#2a0a3e);font-family:
 const S=id=>document.getElementById(id);
 const setText=(el,v)=>{if(el)el.textContent=v;};
 const setHTML=(el,v)=>{if(el)el.innerHTML=v;};
-let score=0,timeLeft=60,combo=1,peakCombo=1,gameRunning=false,highScores=[],isLast10=false;
+let score=0,totalScore=0,timeLeft=60,combo=1,peakCombo=1,gameRunning=false,highScores=[],isLast10=false;
 let timerInterval=null,dropTimeout=null,missTimeout=null,faceResetTimeout=null;
 let activeButton=null,wipeArmTimeout=null,popTimer=null,riseTimeout=null,multiPopTimer=null;
 let currentRiseY=0,consFlush=0;
-const POINTS_BASE=10,DROP_MS=1000;
+let currentLevel=1,levelTargets=[],isChaos=false;
+const POINTS_BASE=10;
+// Level targets: L1=3000, +4000 each level
+for(let i=0;i<10;i++) levelTargets.push(3000 + i*4000);
+// Button show duration: L1=1000ms, triples by L10 so L10=333ms
+function getDropMs(){return Math.round(1000 / (1 + (currentLevel-1)*(2/9)));}
+// Gap between buttons: L1=150ms, shrinks to 50ms by L10
+function getGapMs(){return Math.round(150 - (currentLevel-1)*(100/9));}
 const poopBtn=S('poop-btn'),flushBtn=S('flush-btn'),rollBtn=S('roll-btn');
 const overlay=S('overlay'),ovTitle=S('ov-title'),ovSub=S('ov-sub');
 const scoreDisp=S('score-display'),bestDisp=S('best-display'),multiVal=S('multi-val');
@@ -327,21 +354,45 @@ function launchButton(type){
     if(activeButton!==type)return;
     btn.classList.remove('visible','safe');
     activeButton=null;
-    if(type==='flush'&&!isLast10){/* silent */}
+    if(type==='flush'&&!isLast10&&!isChaos){/* silent */}
     else resetMulti('miss');
     scheduleNext();
-  },DROP_MS);
+  },getDropMs());
 }
 
 function scheduleNext(){
   if(!gameRunning)return;
+  // In chaos mode spawn multiple buttons rapidly
+  if(isChaos){
+    dropTimeout=setTimeout(()=>{
+      if(!gameRunning)return;
+      // Chaos: all three buttons fire rapidly at random positions
+      const types=['poop','flush','roll'];
+      const type=types[Math.floor(Math.random()*types.length)];
+      // In chaos all buttons are pressable (flush safe)
+      activeButton=type;
+      const btn=type==='poop'?poopBtn:type==='flush'?flushBtn:rollBtn;
+      const pos=randomPos(type);
+      btn.style.left=pos.x+'px'; btn.style.top=pos.y+'px';
+      btn.classList.add('visible','safe');
+      clearTimeout(missTimeout);
+      missTimeout=setTimeout(()=>{
+        if(activeButton!==type)return;
+        btn.classList.remove('visible','safe');
+        activeButton=null;
+        resetMulti('miss');
+        scheduleNext();
+      },getDropMs());
+    },getGapMs());
+    return;
+  }
   dropTimeout=setTimeout(()=>{
     if(!gameRunning||activeButton)return;
     const r=Math.random();let type;
     if(isLast10){type='flush';}
     else{if(consFlush>=2){type=Math.random()<.55?'poop':'roll';}else{type=r<.38?'poop':r<.68?'flush':'roll';}if(type==='flush')consFlush++;else consFlush=0;}
     launchButton(type);
-  },150);
+  },getGapMs());
 }
 
 function onPress(type){
@@ -368,7 +419,15 @@ function onPress(type){
   const pl=['Royal delivery! 💩','By Osiris!','Glorious! 👑','Keep going!'];
   const fl=['FLUSH IT! 🚽','Down the Nile!','KEEP FLUSHING!','Magnificent!'];
   const rl=['Royal wipe! 🧻','Squeaky clean! ✨','Pharaoh approves!','Like new!'];
-  setText(hintText,(type==='poop'?pl:type==='flush'?fl:rl)[Math.floor(Math.random()*4)]);
+  // Show progress toward level target
+  const target=levelTargets[currentLevel-1];
+  const remaining=Math.max(0,target-score);
+  if(remaining>0){
+    setText(hintText,`Need ${remaining} more to advance!`);
+  } else {
+    setText(hintText,(type==='poop'?pl:type==='flush'?fl:rl)[Math.floor(Math.random()*4)]);
+  }
+  updateLevelBar();
   scheduleNext();
 }
 
@@ -376,51 +435,133 @@ poopBtn.addEventListener('click',()=>onPress('poop'));
 flushBtn.addEventListener('click',()=>onPress('flush'));
 rollBtn.addEventListener('click',()=>onPress('roll'));
 
-function startGame(){
-  score=0;timeLeft=60;combo=1;peakCombo=1;activeButton=null;gameRunning=true;isLast10=false;consFlush=0;
-  setText(scoreDisp,'0');setText(timerDisp,'60');
-  if(timerDisp)timerDisp.style.color='';
+function updateLevelBar(){
+  const target=levelTargets[currentLevel-1];
+  const prev=currentLevel>1?levelTargets[currentLevel-2]:0;
+  const pct=Math.min(100,((score-prev)/(target-prev))*100);
+  const lb=S('level-bar');if(lb)lb.style.width=pct+'%';
+}
+
+function startLevel(){
+  // Set up for current level
+  const isLv10=currentLevel===10;
+  isChaos=false;
+  timeLeft=isLv10?10:60;
+  isLast10=false;consFlush=0;
+  combo=1;peakCombo=Math.max(peakCombo,1);activeButton=null;
+  gameRunning=true;
+  setText(timerDisp,timeLeft);
+  if(timerDisp)timerDisp.style.color=isLv10?'#ff5555':'';
   if(timerBar){timerBar.style.width='100%';timerBar.style.backgroundPosition='right center';}
   setText(multiVal,'x1');setText(combCount,'1');
   if(combDisp)combDisp.classList.remove('active');
-  setText(hintText,'👆 Tap as they fall — ignore FLUSH!');
   poopBtn.classList.remove('visible','safe');flushBtn.classList.remove('visible','safe');rollBtn.classList.remove('visible');
-  if(gameArea)gameArea.classList.remove('danger');if(last10Ban)last10Ban.classList.remove('visible');
-  particles=[];tutSettle(0);setFaceNormal();if(overlay)overlay.classList.add('hidden');resizeCanvas();
-
+  if(gameArea)gameArea.classList.remove('danger','chaos');
+  if(last10Ban)last10Ban.classList.remove('visible');
+  // Level 10 = instant chaos
+  if(isLv10){
+    isChaos=true;
+    if(gameArea)gameArea.classList.add('danger','chaos');
+    if(last10Ban){last10Ban.textContent='👑 FINAL LEVEL — CHAOS! 👑';last10Ban.classList.add('visible');}
+    setText(hintText,'💀 FINAL LEVEL! TAP EVERYTHING! 💀');
+    if(timerDisp)timerDisp.style.color='#ff5555';
+  } else {
+    const target=levelTargets[currentLevel-1];
+    setText(hintText,`Level ${currentLevel} — reach ${target} to advance!`);
+  }
+  updateLevelBar();
+  clearInterval(timerInterval);
   timerInterval=setInterval(()=>{
     try{
       timeLeft--;setText(timerDisp,timeLeft);
-      const pct=timeLeft/60;
+      const maxT=currentLevel===10?10:60;
+      const pct=timeLeft/maxT;
       if(timerBar){timerBar.style.width=(pct*100)+'%';timerBar.style.backgroundPosition=`${pct*200}% center`;}
-      if(timeLeft===10&&!isLast10){
-        isLast10=true;if(gameArea)gameArea.classList.add('danger');if(last10Ban)last10Ban.classList.add('visible');
+      // Normal levels: last 10s flush mode
+      if(!isChaos&&timeLeft===10&&!isLast10){
+        isLast10=true;if(gameArea)gameArea.classList.add('danger');if(last10Ban){last10Ban.textContent='🚨 FLUSH NOW! 🚨';last10Ban.classList.add('visible');}
         if(timerDisp)timerDisp.style.color='#ff5555';setText(hintText,'🚨 FLUSH IS NOW SAFE — SMASH IT! 🚨');
         if(activeButton){const b=activeButton==='poop'?poopBtn:activeButton==='flush'?flushBtn:rollBtn;b.classList.remove('visible','safe');clearTimeout(missTimeout);activeButton=null;}
         clearTimeout(dropTimeout);launchButton('flush');
       }
-      if(timeLeft<=0){clearInterval(timerInterval);endGame();}
-    }catch(e){console.error(e);if(timeLeft<=0){clearInterval(timerInterval);endGame();}}
+      if(timeLeft<=0){clearInterval(timerInterval);endLevel();}
+    }catch(e){console.error(e);if(timeLeft<=0){clearInterval(timerInterval);endLevel();}}
   },1000);
   scheduleNext();
 }
+
+function triggerLevelUp(){
+  // Stop current level
+  gameRunning=false;
+  clearInterval(timerInterval);clearTimeout(dropTimeout);clearTimeout(missTimeout);
+  poopBtn.classList.remove('visible','safe');flushBtn.classList.remove('visible','safe');rollBtn.classList.remove('visible');
+  activeButton=null;
+  if(gameArea)gameArea.classList.remove('danger','chaos');
+  if(last10Ban)last10Ban.classList.remove('visible');
+  // Show level up screen
+  const lvlScreen=S('levelup-screen');
+  const lvlTitle=S('levelup-title');
+  const lvlSub=S('levelup-sub');
+  if(lvlTitle)lvlTitle.textContent=currentLevel===9?'FINAL LEVEL UNLOCKED! 👑':'LEVEL UP! 🔥';
+  if(lvlSub)lvlSub.textContent=currentLevel===9?'SURVIVE 10 SECONDS OF CHAOS!':
+    `Level ${currentLevel+1} — Target: ${levelTargets[currentLevel].toLocaleString()} pts`;
+  if(lvlScreen){lvlScreen.classList.remove('show');void lvlScreen.offsetWidth;lvlScreen.classList.add('show');}
+  setTimeout(()=>{
+    if(lvlScreen)lvlScreen.classList.remove('show');
+    currentLevel++;
+    startLevel();
+  },2000);
+}
+
+function endLevel(){
+  // Timer ran out — now check if target was hit
+  const target=levelTargets[currentLevel-1];
+  const hitTarget=score>=target;
+  if(hitTarget&&currentLevel<10){
+    // Passed this level — advance
+    triggerLevelUp();
+  } else if(hitTarget&&currentLevel===10){
+    // Beat level 10 — victory!
+    endGame();
+  } else {
+    // Missed target — game over
+    endGame();
+  }
+}
+
+function startGame(){
+  score=0;totalScore=0;timeLeft=60;combo=1;peakCombo=1;currentLevel=1;isChaos=false;
+  particles=[];tutSettle(0);setFaceNormal();
+  if(overlay)overlay.classList.add('hidden');
+  resizeCanvas();
+  startLevel();
+}
+
+// N key = skip level (dev tool)
+document.addEventListener('keydown',e=>{if(e.key==='n'||e.key==='N'){if(gameRunning)triggerLevelUp();}});
 
 function endGame(){
   gameRunning=false;
   clearInterval(timerInterval);clearTimeout(dropTimeout);clearTimeout(missTimeout);clearTimeout(faceResetTimeout);clearTimeout(riseTimeout);
   poopBtn.classList.remove('visible','safe');flushBtn.classList.remove('visible','safe');rollBtn.classList.remove('visible');
   activeButton=null;tutSettle(300);
-  if(gameArea)gameArea.classList.remove('danger');if(last10Ban)last10Ban.classList.remove('visible');
-  applyFace(score>=500?FF[0]:score>=100?NORMAL:EMBAR);
+  if(gameArea)gameArea.classList.remove('danger','chaos');if(last10Ban)last10Ban.classList.remove('visible');
+  const won=currentLevel===10&&score>=levelTargets[9];
+  applyFace(won?FF[0]:score>=500?FF[0]:score>=100?NORMAL:EMBAR);
   saveScore(score);
-  if(goScreen){goScreen.classList.remove('show');void goScreen.offsetWidth;goScreen.classList.add('show');}
+  if(goScreen){
+    const got=S('game-over-text');
+    if(got)got.innerHTML=won?'YOU WIN!<br>👑':currentLevel===10?'SURVIVED!<br>💩':'GAME<br>OVER!';
+    goScreen.classList.remove('show');void goScreen.offsetWidth;goScreen.classList.add('show');
+  }
   setTimeout(()=>{
     if(goScreen)goScreen.classList.remove('show');
     const rank=highScores.indexOf(score)+1;
     const rt=['🥇 NEW RECORD!','🥈 Second Place!','🥉 Third Place!','Honourable attempt!','Keep practising!'][Math.min(rank-1,4)];
-    const v=score>=2000?'A LIVING GOD! ⚡👑':score>=1000?'The gods bow before you! 👑':score>=400?'Most impressive, Pharaoh! 💩':score>=100?'Acceptable... for a mortal. 😤':'The Pharaoh is NOT amused. 😒';
-    setText(ovTitle,"⏱ TIME'S UP! 💩");
-    setHTML(ovSub,`You scored <strong style="color:#FFD700;font-size:1.4em">${score}</strong> royal points!<br><em>${rt}</em><br><br>${v}<br><br><span style="color:rgba(255,150,0,.8);font-size:.85em">🔥 Peak multiplier: x${peakCombo}</span>`);
+    const levelsCleared=won?'All 10 levels conquered! 👑':`Reached Level ${currentLevel}`;
+    const v=won?'THE PHARAOH IS VICTORIOUS! 👑⚡':score>=5000?'A LIVING GOD! ⚡👑':score>=2000?'The gods bow before you! 👑':score>=800?'Most impressive, Pharaoh! 💩':'The Pharaoh is NOT amused. 😒';
+    setText(ovTitle,won?"👑 VICTORY! 👑":"💩 GAME OVER!");
+    setHTML(ovSub,`<strong style="color:#FFD700;font-size:1.2em">${levelsCleared}</strong><br><br>Final Score: <strong style="color:#FFD700;font-size:1.4em">${score}</strong><br><em>${rt}</em><br><br>${v}<br><br><span style="color:rgba(255,150,0,.8);font-size:.85em">🔥 Peak multiplier: x${peakCombo}</span>`);
     const sb=S('start-btn');if(sb)sb.textContent='🔄 SIT AGAIN!';
     renderScores();if(overlay)overlay.classList.remove('hidden');
   },1900);
