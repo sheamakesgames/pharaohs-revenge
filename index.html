@@ -27,7 +27,8 @@ body{background:linear-gradient(180deg,#1a0a00,#3d1f00 50%,#2a0a3e);font-family:
 @keyframes chaosShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
 #game-area.chaos{animation:chaosShake .15s infinite,dangerPulse .3s infinite alternate!important;}
 #crown-bar::before{content:'👑';position:absolute;left:8px;top:50%;transform:translateY(-50%);}
-#crown-bar::after{content:'👑';position:absolute;right:8px;top:50%;transform:translateY(-50%);}
+#crown-bar::after{content:'👑';position:absolute;right:30px;top:50%;transform:translateY(-50%);}
+#mute-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--gold);font-size:16px;cursor:pointer;padding:2px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;z-index:10;}
 #throne{width:100%;max-width:480px;flex:1;min-height:0;display:grid;grid-template-columns:76px 1fr 76px;grid-template-rows:auto 1fr;}
 .arm{background:linear-gradient(180deg,rgba(255,215,0,.1),rgba(255,215,0,.05));padding:10px 4px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:10px;}
 .arm-left{border-right:3px solid var(--gold);grid-column:1;grid-row:1/3;}
@@ -130,7 +131,7 @@ body{background:linear-gradient(180deg,#1a0a00,#3d1f00 50%,#2a0a3e);font-family:
 </style>
 </head>
 <body>
-<div id="crown-bar">PHARAOH'S REVENGE — THE ROYAL FLUSH</div>
+<div id="crown-bar">PHARAOH'S REVENGE — THE ROYAL FLUSH<button id="mute-btn" onclick="toggleMute()">🔊</button></div>
 <div id="level-bar-wrap"><div id="level-bar"></div></div>
 <div id="levelup-screen">
   <div id="levelup-title">LEVEL UP!</div>
@@ -316,7 +317,7 @@ function resetMulti(reason){
   combo=1;setText(multiVal,'x1');setText(combCount,'1');
   if(combDisp)combDisp.classList.remove('active');
   if(gameFlash){gameFlash.classList.remove('red');void gameFlash.offsetWidth;gameFlash.classList.add('red');}
-  if(reason==='early')flashFace(HORROR,1100);else flashFace(EMBAR,900);
+  if(reason==='early')flashFace(HORROR,1100);else flashFace(EMBAR,900);playMultiLost();
   if(mResetPop){mResetPop.style.transform='scale(1)';mResetPop.style.opacity='1';clearTimeout(multiPopTimer);multiPopTimer=setTimeout(()=>{mResetPop.style.transform='scale(0)';mResetPop.style.opacity='0';},1300);}
   if(gameArea){gameArea.style.transform='translateX(-5px)';setTimeout(()=>gameArea.style.transform='translateX(5px)',70);setTimeout(()=>gameArea.style.transform='translateX(-3px)',140);setTimeout(()=>gameArea.style.transform='translateX(0)',210);}
 }
@@ -355,7 +356,7 @@ function launchButton(type){
     btn.classList.remove('visible','safe');
     activeButton=null;
     if(type==='flush'&&!isLast10&&!isChaos){/* silent */}
-    else resetMulti('miss');
+    else{resetMulti('miss');playMiss();}
     scheduleNext();
   },getDropMs());
 }
@@ -413,7 +414,7 @@ function onPress(type){
   const pts=POINTS_BASE*combo;score+=pts;
   setText(scoreDisp,score);setText(multiVal,`x${combo}`);setText(combCount,combo);
   if(combDisp&&combo>=2)combDisp.classList.add('active');
-  if(type==='poop')doPoop();else if(type==='roll')doWipe();else doFlush();
+  if(type==='poop'){doPoop();playPoop();}else if(type==='roll'){doWipe();playWipe();}else{doFlush();playFlush();}
   spawnFloat(`+${pts}`,br.left+br.width/2-20,br.top+br.height/2-40,true);
   showPopup(pts);
   const pl=['Royal delivery! 💩','By Osiris!','Glorious! 👑','Keep going!'];
@@ -463,7 +464,7 @@ function startLevel(){
     isChaos=true;
     if(gameArea)gameArea.classList.add('danger','chaos');
     if(last10Ban){last10Ban.textContent='👑 FINAL LEVEL — CHAOS! 👑';last10Ban.classList.add('visible');}
-    setText(hintText,'💀 FINAL LEVEL! TAP EVERYTHING! 💀');
+    setText(hintText,'💀 FINAL LEVEL! TAP EVERYTHING! 💀');playChaos();
     if(timerDisp)timerDisp.style.color='#ff5555';
   } else {
     const target=levelTargets[currentLevel-1];
@@ -502,7 +503,7 @@ function triggerLevelUp(){
   const lvlScreen=S('levelup-screen');
   const lvlTitle=S('levelup-title');
   const lvlSub=S('levelup-sub');
-  if(lvlTitle)lvlTitle.textContent=currentLevel===9?'FINAL LEVEL UNLOCKED! 👑':'LEVEL UP! 🔥';
+  if(lvlTitle)lvlTitle.textContent=currentLevel===9?'FINAL LEVEL UNLOCKED! 👑':'LEVEL UP! 🔥';playLevelUp();
   if(lvlSub)lvlSub.textContent=currentLevel===9?'SURVIVE 10 SECONDS OF CHAOS!':
     `Level ${currentLevel+1} — Target: ${levelTargets[currentLevel].toLocaleString()} pts`;
   if(lvlScreen){lvlScreen.classList.remove('show');void lvlScreen.offsetWidth;lvlScreen.classList.add('show');}
@@ -546,7 +547,7 @@ function endGame(){
   poopBtn.classList.remove('visible','safe');flushBtn.classList.remove('visible','safe');rollBtn.classList.remove('visible');
   activeButton=null;tutSettle(300);
   if(gameArea)gameArea.classList.remove('danger','chaos');if(last10Ban)last10Ban.classList.remove('visible');
-  const won=currentLevel===10&&score>=levelTargets[9];
+  const won=currentLevel===10&&score>=levelTargets[9];if(won)playVictory();
   applyFace(won?FF[0]:score>=500?FF[0]:score>=100?NORMAL:EMBAR);
   saveScore(score);
   if(goScreen){
@@ -567,6 +568,200 @@ function endGame(){
   },1900);
 }
 loadScores();setTimeout(resizeCanvas,300);
+
+// ── SOUND ENGINE ─────────────────────────────────────────────────────────
+let actx=null,muted=false;
+const VOL=0.55; // medium volume master
+
+function getCtx(){
+  if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();
+  if(actx.state==='suspended')actx.resume();
+  return actx;
+}
+function toggleMute(){
+  muted=!muted;
+  const btn=S('mute-btn');
+  if(btn)btn.textContent=muted?'🔇':'🔊';
+}
+
+function playPoop(){
+  if(muted)return;
+  const c=getCtx(),t=c.currentTime;
+  const dur=0.4+Math.random()*0.3;
+  const baseFreq=60+Math.random()*40;
+  const buf=c.createBuffer(1,c.sampleRate*dur,c.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  const noise=c.createBufferSource();noise.buffer=buf;
+  const nFilt=c.createBiquadFilter();nFilt.type='bandpass';nFilt.frequency.value=300;nFilt.Q.value=0.5;
+  const nGain=c.createGain();
+  noise.connect(nFilt);nFilt.connect(nGain);nGain.connect(c.destination);
+  nGain.gain.setValueAtTime(0,t);nGain.gain.linearRampToValueAtTime(VOL*0.5,t+0.02);
+  nGain.gain.setValueAtTime(VOL*0.5,t+dur*0.6);nGain.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  noise.start(t);noise.stop(t+dur);
+  const o=c.createOscillator(),g=c.createGain();
+  const dist=c.createWaveShaper();
+  const curve=new Float32Array(512);
+  for(let i=0;i<512;i++){const x=i*2/512-1;curve[i]=Math.tanh(x*6);}
+  dist.curve=curve;
+  o.connect(dist);dist.connect(g);g.connect(c.destination);
+  o.type='sawtooth';
+  o.frequency.setValueAtTime(baseFreq*1.4,t);o.frequency.linearRampToValueAtTime(baseFreq,t+0.04);
+  o.frequency.linearRampToValueAtTime(baseFreq*1.2,t+0.09);o.frequency.linearRampToValueAtTime(baseFreq*0.8,t+0.15);
+  o.frequency.linearRampToValueAtTime(baseFreq*1.1,t+0.22);o.frequency.exponentialRampToValueAtTime(baseFreq*0.5,t+dur);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(VOL*0.6,t+0.02);
+  g.gain.setValueAtTime(VOL*0.6,t+dur*0.5);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  o.start(t);o.stop(t+dur);
+  const o2=c.createOscillator(),g2=c.createGain();
+  o2.connect(g2);g2.connect(c.destination);o2.type='sine';
+  o2.frequency.setValueAtTime(200,t+dur*0.7);o2.frequency.exponentialRampToValueAtTime(60,t+dur+0.1);
+  g2.gain.setValueAtTime(0,t+dur*0.7);g2.gain.linearRampToValueAtTime(VOL*0.5,t+dur*0.75);
+  g2.gain.exponentialRampToValueAtTime(0.001,t+dur+0.15);
+  o2.start(t+dur*0.7);o2.stop(t+dur+0.15);
+}
+
+function playWipe(){
+  if(muted)return;
+  const c=getCtx(),t=c.currentTime;
+  const buf=c.createBuffer(1,c.sampleRate*0.3,c.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*0.4;
+  const src=c.createBufferSource();src.buffer=buf;
+  const filt=c.createBiquadFilter();filt.type='bandpass';filt.frequency.value=3000;filt.Q.value=0.8;
+  const g=c.createGain();
+  src.connect(filt);filt.connect(g);g.connect(c.destination);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(VOL*0.5,t+0.04);
+  g.gain.linearRampToValueAtTime(VOL*0.3,t+0.15);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+  filt.frequency.setValueAtTime(2000,t);filt.frequency.linearRampToValueAtTime(5000,t+0.15);
+  filt.frequency.linearRampToValueAtTime(2000,t+0.3);
+  src.start(t);src.stop(t+0.3);
+}
+
+function playFlush(){
+  if(muted)return;
+  const c=getCtx(),t=c.currentTime;
+  const buf=c.createBuffer(1,c.sampleRate*1.2,c.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  const src=c.createBufferSource();src.buffer=buf;
+  const filt=c.createBiquadFilter();filt.type='lowpass';
+  filt.frequency.setValueAtTime(800,t);filt.frequency.linearRampToValueAtTime(400,t+0.6);
+  filt.frequency.linearRampToValueAtTime(200,t+1.2);
+  const g=c.createGain();
+  src.connect(filt);filt.connect(g);g.connect(c.destination);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(VOL*0.5,t+0.1);
+  g.gain.setValueAtTime(VOL*0.5,t+0.5);g.gain.exponentialRampToValueAtTime(0.001,t+1.2);
+  src.start(t);src.stop(t+1.2);
+  const o=c.createOscillator(),og=c.createGain();
+  o.connect(og);og.connect(c.destination);o.type='sine';
+  o.frequency.setValueAtTime(220,t);o.frequency.exponentialRampToValueAtTime(80,t+1.0);
+  og.gain.setValueAtTime(VOL*0.15,t);og.gain.exponentialRampToValueAtTime(0.001,t+1.0);
+  o.start(t);o.stop(t+1.0);
+}
+
+function playMiss(){
+  if(muted)return;
+  const c=getCtx(),t=c.currentTime;
+  const o=c.createOscillator(),g=c.createGain();
+  o.connect(g);g.connect(c.destination);o.type='sine';
+  o.frequency.setValueAtTime(110,t);o.frequency.exponentialRampToValueAtTime(90,t+1.5);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(VOL*0.6,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.001,t+1.8);o.start(t);o.stop(t+1.8);
+  const o2=c.createOscillator(),g2=c.createGain();
+  o2.connect(g2);g2.connect(c.destination);o2.type='sine';
+  o2.frequency.setValueAtTime(220,t);o2.frequency.exponentialRampToValueAtTime(180,t+1.5);
+  g2.gain.setValueAtTime(0,t);g2.gain.linearRampToValueAtTime(VOL*0.3,t+0.01);
+  g2.gain.exponentialRampToValueAtTime(0.001,t+1.5);o2.start(t);o2.stop(t+1.5);
+}
+
+function playMultiLost(){
+  if(muted)return;
+  const c=getCtx(),t=c.currentTime;
+  [220,196,165,147].forEach((freq,i)=>{
+    const o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);o.type='sawtooth';
+    const st=t+i*0.18;
+    o.frequency.setValueAtTime(freq,st);o.frequency.setValueAtTime(freq*0.95,st+0.15);
+    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(VOL*0.35,st+0.04);
+    g.gain.exponentialRampToValueAtTime(0.001,st+0.2);o.start(st);o.stop(st+0.2);
+  });
+  const o=c.createOscillator(),g=c.createGain();
+  o.connect(g);g.connect(c.destination);o.type='sine';
+  o.frequency.setValueAtTime(80,t);o.frequency.exponentialRampToValueAtTime(40,t+0.3);
+  g.gain.setValueAtTime(VOL*0.8,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.4);
+  o.start(t);o.stop(t+0.4);
+}
+
+function playLevelUp(){
+  if(muted)return;
+  const c=getCtx(),t=c.currentTime;
+  [294,330,392,440,494,587,659].forEach((freq,i)=>{
+    const o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);o.type='triangle';
+    const st=t+i*0.1;
+    o.frequency.setValueAtTime(freq,st);
+    o.frequency.linearRampToValueAtTime(freq*1.02,st+0.04);
+    o.frequency.linearRampToValueAtTime(freq,st+0.08);
+    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(VOL*0.4,st+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001,st+0.18);o.start(st);o.stop(st+0.18);
+  });
+  [587,740,880].forEach(freq=>{
+    const o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);o.type='sine';
+    const st=t+0.72;o.frequency.value=freq;
+    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(VOL*0.25,st+0.05);
+    g.gain.exponentialRampToValueAtTime(0.001,st+0.5);o.start(st);o.stop(st+0.5);
+  });
+}
+
+function playChaos(){
+  if(muted)return;
+  const c=getCtx(),t=c.currentTime;
+  for(let i=0;i<10;i++){
+    const o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);o.type='sine';
+    const st=t+i*0.08;const isDeep=i%2===0;
+    o.frequency.setValueAtTime(isDeep?130:90,st);
+    o.frequency.exponentialRampToValueAtTime(isDeep?50:35,st+0.07);
+    g.gain.setValueAtTime(VOL*0.9,st);g.gain.exponentialRampToValueAtTime(0.001,st+0.09);
+    o.start(st);o.stop(st+0.09);
+    const buf=c.createBuffer(1,Math.floor(c.sampleRate*0.06),c.sampleRate);
+    const d=buf.getChannelData(0);for(let j=0;j<d.length;j++)d[j]=Math.random()*2-1;
+    const ns=c.createBufferSource();ns.buffer=buf;
+    const nf=c.createBiquadFilter();nf.type='lowpass';nf.frequency.value=200;
+    const ng=c.createGain();ns.connect(nf);nf.connect(ng);ng.connect(c.destination);
+    ng.gain.setValueAtTime(isDeep?VOL*0.5:VOL*0.3,st);
+    ng.gain.exponentialRampToValueAtTime(0.001,st+0.06);
+    ns.start(st);ns.stop(st+0.06);
+  }
+}
+
+function playVictory(){
+  if(muted)return;
+  const c=getCtx(),t=c.currentTime;
+  [[392,0],[392,0.15],[392,0.3],[494,0.45],[587,0.65],[587,0.8],[659,0.95],[784,1.15]].forEach(([freq,delay])=>{
+    const o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);o.type='sawtooth';
+    const st=t+delay;o.frequency.value=freq;
+    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(VOL*0.35,st+0.04);
+    g.gain.exponentialRampToValueAtTime(0.001,st+0.18);o.start(st);o.stop(st+0.2);
+  });
+  for(let i=0;i<6;i++){
+    const o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);o.type='sine';
+    const st=t+i*0.25;o.frequency.setValueAtTime(100,st);
+    o.frequency.exponentialRampToValueAtTime(50,st+0.1);
+    g.gain.setValueAtTime(VOL*0.5,st);g.gain.exponentialRampToValueAtTime(0.001,st+0.12);
+    o.start(st);o.stop(st+0.12);
+  }
+  [392,494,587,784].forEach(freq=>{
+    const o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);o.type='sine';
+    const st=t+1.35;o.frequency.value=freq;
+    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(VOL*0.3,st+0.05);
+    g.gain.exponentialRampToValueAtTime(0.001,st+1.0);o.start(st);o.stop(st+1.0);
+  });
+}
 </script>
 </body>
 </html>
