@@ -4,6 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Pharaoh's Revenge</title>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCPlV3aD-H7WFJG0DFG0BUc2R_pL6BEsJ4",
+  authDomain: "pharaohs-revenge-56272.firebaseapp.com",
+  projectId: "pharaohs-revenge-56272",
+  storageBucket: "pharaohs-revenge-56272.firebasestorage.app",
+  messagingSenderId: "429267932802",
+  appId: "1:429267932802:web:d4c0aae26f32eecf14c69b",
+  measurementId: "G-TNZ86EFNYB"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+window._db = db;
+window._fbCol = collection(db, "scores");
+window._fbFns = { addDoc, getDocs, query, orderBy, limit, collection };
+
+async function loadGlobalScores() {
+  try {
+    const q = query(window._fbCol, orderBy("score","desc"), limit(5));
+    const snap = await getDocs(q);
+    window._globalScores = snap.docs.map(d => d.data());
+    renderGlobalScores();
+  } catch(e) {
+    console.warn("Firebase load error:", e);
+  }
+}
+
+window.submitScoreToFirebase = async function(name, score) {
+  try {
+    await addDoc(window._fbCol, { name: name.toUpperCase(), score, date: Date.now() });
+    await loadGlobalScores();
+  } catch(e) {
+    console.warn("Firebase save error:", e);
+  }
+};
+
+window.renderGlobalScores = function() {
+  const list = document.getElementById('scores-list');
+  if (!list) return;
+  const scores = window._globalScores || [];
+  const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+  list.innerHTML = scores.length
+    ? scores.map((s,i) => `<div class="score-row"><span class="rank">${medals[i]}</span><span style="font-weight:bold;letter-spacing:1px">${s.name}</span><span class="sv">${s.score}</span></div>`).join('')
+    : '<div class="score-row"><span style="opacity:.5">No scores yet!</span></div>';
+};
+
+loadGlobalScores();
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Fredoka+One&display=swap');
 :root{--gold:#FFD700;--dark-gold:#B8860B;--sand:#F5DEB3;--purple:#4a1a6e;--deep:#2a0a3e;}
@@ -128,6 +180,14 @@ body{background:linear-gradient(180deg,#1a0a00,#3d1f00 50%,#2a0a3e);font-family:
 .rules-box{background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.2);border-radius:10px;padding:8px 16px;max-width:320px;width:100%;}
 .rules-box p{color:var(--sand);font-size:clamp(11px,2.2vw,14px);line-height:1.7;margin:2px 0;}
 .warn{color:#ffaa00;}.danger{color:#ff5555;}
+#name-modal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:600;padding:20px;}
+#name-modal.hidden{display:none;}
+#name-modal .ov-title{font-size:clamp(16px,4vw,24px);}
+#name-input{background:rgba(255,215,0,.1);border:2px solid var(--gold);color:var(--gold);font-family:'Cinzel Decorative',serif;font-size:clamp(22px,6vw,34px);letter-spacing:8px;text-align:center;padding:12px 16px;border-radius:10px;width:220px;text-transform:uppercase;outline:none;caret-color:var(--gold);}
+#name-input::placeholder{opacity:.3;letter-spacing:4px;}
+#name-submit-btn{background:linear-gradient(135deg,var(--gold),var(--dark-gold));color:#3d1f00;border:none;border-radius:50px;padding:12px 36px;font-family:'Fredoka One',cursive;font-size:clamp(16px,3.5vw,20px);cursor:pointer;box-shadow:0 4px 16px rgba(255,215,0,.35);touch-action:manipulation;}
+#name-submit-btn:disabled{opacity:.5;}
+#name-score-display{color:var(--gold);font-family:'Fredoka One',cursive;font-size:clamp(14px,3vw,18px);text-align:center;}
 </style>
 </head>
 <body>
@@ -212,6 +272,14 @@ body{background:linear-gradient(180deg,#1a0a00,#3d1f00 50%,#2a0a3e);font-family:
 <div id="score-popup"></div>
 <div id="multi-reset-popup">💥 MULTIPLIER<br>LOST!<br><span style="font-size:.85em;color:#ffaa00">Back to x1!</span></div>
 <div id="game-over-screen"><div id="game-over-text">GAME<br>OVER!</div></div>
+<div id="name-modal" class="hidden">
+  <div class="ov-title">👑 ENTER YOUR NAME</div>
+  <div id="name-score-display"></div>
+  <input id="name-input" type="text" maxlength="5" placeholder="ABCDE" autocomplete="off" autocorrect="off" spellcheck="false"/>
+  <div class="ov-sub" style="font-size:clamp(10px,2vw,12px);opacity:.7">5 letters — will appear on global leaderboard</div>
+  <button id="name-submit-btn" class="big-btn" onclick="submitName()">👑 SUBMIT SCORE</button>
+  <button class="big-btn" style="background:rgba(255,255,255,.08);color:var(--sand);box-shadow:none;font-size:clamp(12px,2.5vw,15px);padding:8px 24px;" onclick="skipName()">Skip</button>
+</div>
 <div id="overlay">
   <div class="ov-title" id="ov-title">PHARAOH'S REVENGE</div>
   <div style="font-size:clamp(32px,8vw,52px)">💩🧻🚽👑</div>
@@ -236,7 +304,7 @@ let score=0,totalScore=0,timeLeft=60,combo=1,peakCombo=1,gameRunning=false,highS
 let timerInterval=null,dropTimeout=null,missTimeout=null,faceResetTimeout=null;
 let activeButton=null,wipeArmTimeout=null,popTimer=null,riseTimeout=null,multiPopTimer=null;
 let currentRiseY=0,consFlush=0;
-let currentLevel=1,levelTargets=[],isChaos=false;
+let currentLevel=1,levelTargets=[],isChaos=false,wonGame=false;
 const POINTS_BASE=10;
 // Level targets: L1=3000, +4000 each level
 for(let i=0;i<10;i++) levelTargets.push(3000 + i*4000);
@@ -261,10 +329,70 @@ let particles=[];
 function resizeCanvas(){if(!tutSvg)return;const r=tutSvg.getBoundingClientRect();canvas.width=r.width;canvas.height=r.height;}
 window.addEventListener('resize',resizeCanvas);setTimeout(resizeCanvas,100);
 
-function loadScores(){try{highScores=JSON.parse(localStorage.getItem('pr_scores')||'[]');}catch(e){highScores=[];}renderScores();updateBest();}
-function saveScore(s){highScores.push(s);highScores.sort((a,b)=>b-a);highScores=highScores.slice(0,5);try{localStorage.setItem('pr_scores',JSON.stringify(highScores));}catch(e){}renderScores();updateBest();}
+function loadScores(){
+  renderScores();updateBest();
+  if(window.renderGlobalScores) window.renderGlobalScores();
+}
+function saveScore(s){
+  highScores.push(s);highScores.sort((a,b)=>b-a);highScores=highScores.slice(0,5);
+  try{localStorage.setItem('pr_scores',JSON.stringify(highScores));}catch(e){}
+  updateBest();
+}
 function updateBest(){setText(bestDisp,highScores[0]||0);}
-function renderScores(){if(!scoresList)return;const m=['🥇','🥈','🥉','4️⃣','5️⃣'];scoresList.innerHTML=highScores.length?highScores.map((s,i)=>`<div class="score-row"><span class="rank">${m[i]}</span><span>Score</span><span class="sv">${s}</span></div>`).join(''):'<div class="score-row"><span style="opacity:.5">No scores yet!</span></div>';}
+function renderScores(){
+  if(window.renderGlobalScores) window.renderGlobalScores();
+}
+
+function showNameModal(s){
+  const modal=S('name-modal');
+  const nd=S('name-score-display');
+  const ni=S('name-input');
+  if(nd)setText(nd,`Your score: ${s}`);
+  if(ni){ni.value='';ni.focus();}
+  const btn=S('name-submit-btn');
+  if(btn)btn.disabled=false;
+  if(modal)modal.classList.remove('hidden');
+  if(ni){
+    ni.addEventListener('input',()=>{
+      ni.value=ni.value.toUpperCase().replace(/[^A-Z]/g,'');
+      if(btn)btn.disabled=ni.value.length<1;
+    },{once:false});
+  }
+}
+
+window.submitName=function(){
+  const ni=S('name-input');
+  const btn=S('name-submit-btn');
+  const name=(ni?ni.value:'').trim().toUpperCase().padEnd(5,'_').slice(0,5);
+  if(!name||name==='_____')return;
+  if(btn){btn.disabled=true;btn.textContent='Saving...';}
+  if(window.submitScoreToFirebase){
+    window.submitScoreToFirebase(name,score).then(()=>{
+      S('name-modal').classList.add('hidden');
+      showOverlayAfterGame();
+    });
+  } else {
+    S('name-modal').classList.add('hidden');
+    showOverlayAfterGame();
+  }
+};
+
+window.skipName=function(){
+  S('name-modal').classList.add('hidden');
+  showOverlayAfterGame();
+};
+
+function showOverlayAfterGame(){
+  const rank=highScores.indexOf(score)+1;
+  const rt=['🥇 NEW RECORD!','🥈 Second Place!','🥉 Third Place!','Honourable attempt!','Keep practising!'][Math.min(rank-1,4)];
+  const levelsCleared=wonGame?'All 10 levels conquered! 👑':`Reached Level ${currentLevel}`;
+  const v=wonGame?'THE PHARAOH IS VICTORIOUS! 👑⚡':score>=5000?'A LIVING GOD! ⚡👑':score>=2000?'The gods bow before you! 👑':score>=800?'Most impressive, Pharaoh! 💩':'The Pharaoh is NOT amused. 😒';
+  setText(ovTitle,wonGame?"👑 VICTORY! 👑":"💩 GAME OVER!");
+  setHTML(ovSub,`<strong style="color:#FFD700;font-size:1.2em">${levelsCleared}</strong><br><br>Final Score: <strong style="color:#FFD700;font-size:1.4em">${score}</strong><br><em>${rt}</em><br><br>${v}<br><br><span style="color:rgba(255,150,0,.8);font-size:.85em">🔥 Peak multiplier: x${peakCombo}</span>`);
+  const sb=S('start-btn');if(sb)sb.textContent='🔄 SIT AGAIN!';
+  if(window.renderGlobalScores)window.renderGlobalScores();
+  if(overlay)overlay.classList.remove('hidden');
+}
 
 const PF=[
   {m:'M82 117 Q90 112 98 117',lb:'M67 85 Q76 79 85 83',rb:'M95 83 Q104 79 113 85',lx:'75',ly:'93',rx:'103',ry:'93',bl:.5,sw:.6,tg:0,dz:0,cap:'Nnngghh!! 😤'},
@@ -531,7 +659,7 @@ function endLevel(){
 }
 
 function startGame(){
-  score=0;totalScore=0;timeLeft=60;combo=1;peakCombo=1;currentLevel=1;isChaos=false;
+  score=0;totalScore=0;timeLeft=60;combo=1;peakCombo=1;currentLevel=1;isChaos=false;wonGame=false;
   particles=[];tutSettle(0);setFaceNormal();
   if(overlay)overlay.classList.add('hidden');
   resizeCanvas();
@@ -547,27 +675,21 @@ function endGame(){
   poopBtn.classList.remove('visible','safe');flushBtn.classList.remove('visible','safe');rollBtn.classList.remove('visible');
   activeButton=null;tutSettle(300);
   if(gameArea)gameArea.classList.remove('danger','chaos');if(last10Ban)last10Ban.classList.remove('visible');
-  const won=currentLevel===10&&score>=levelTargets[9];if(won)playVictory();
-  applyFace(won?FF[0]:score>=500?FF[0]:score>=100?NORMAL:EMBAR);
+  wonGame=currentLevel===10&&score>=levelTargets[9];
+  if(wonGame)playVictory();
+  applyFace(wonGame?FF[0]:score>=500?FF[0]:score>=100?NORMAL:EMBAR);
   saveScore(score);
   if(goScreen){
     const got=S('game-over-text');
-    if(got)got.innerHTML=won?'YOU WIN!<br>👑':currentLevel===10?'SURVIVED!<br>💩':'GAME<br>OVER!';
+    if(got)got.innerHTML=wonGame?'YOU WIN!<br>👑':currentLevel===10?'SURVIVED!<br>💩':'GAME<br>OVER!';
     goScreen.classList.remove('show');void goScreen.offsetWidth;goScreen.classList.add('show');
   }
   setTimeout(()=>{
     if(goScreen)goScreen.classList.remove('show');
-    const rank=highScores.indexOf(score)+1;
-    const rt=['🥇 NEW RECORD!','🥈 Second Place!','🥉 Third Place!','Honourable attempt!','Keep practising!'][Math.min(rank-1,4)];
-    const levelsCleared=won?'All 10 levels conquered! 👑':`Reached Level ${currentLevel}`;
-    const v=won?'THE PHARAOH IS VICTORIOUS! 👑⚡':score>=5000?'A LIVING GOD! ⚡👑':score>=2000?'The gods bow before you! 👑':score>=800?'Most impressive, Pharaoh! 💩':'The Pharaoh is NOT amused. 😒';
-    setText(ovTitle,won?"👑 VICTORY! 👑":"💩 GAME OVER!");
-    setHTML(ovSub,`<strong style="color:#FFD700;font-size:1.2em">${levelsCleared}</strong><br><br>Final Score: <strong style="color:#FFD700;font-size:1.4em">${score}</strong><br><em>${rt}</em><br><br>${v}<br><br><span style="color:rgba(255,150,0,.8);font-size:.85em">🔥 Peak multiplier: x${peakCombo}</span>`);
-    const sb=S('start-btn');if(sb)sb.textContent='🔄 SIT AGAIN!';
-    renderScores();if(overlay)overlay.classList.remove('hidden');
+    showNameModal(score);
   },1900);
 }
-loadScores();setTimeout(resizeCanvas,300);
+loadScores();try{highScores=JSON.parse(localStorage.getItem('pr_scores')||'[]');}catch(e){highScores=[];}updateBest();setTimeout(resizeCanvas,300);
 
 // ── SOUND ENGINE ─────────────────────────────────────────────────────────
 let actx=null,muted=false;
