@@ -26,7 +26,7 @@ window._fbFns = { addDoc, getDocs, query, orderBy, limit, collection };
 
 async function loadGlobalScores() {
   try {
-    const q = query(window._fbCol, orderBy("score","desc"), limit(5));
+    const q = query(window._fbCol, orderBy("score","desc"), limit(20));
     const snap = await getDocs(q);
     window._globalScores = snap.docs.map(d => d.data());
     renderGlobalScores();
@@ -45,13 +45,13 @@ window.submitScoreToFirebase = async function(name, score) {
 };
 
 window.renderGlobalScores = function() {
-  const list = document.getElementById('scores-list');
-  if (!list) return;
+  const lists = document.querySelectorAll('.scores-list-target');
   const scores = window._globalScores || [];
-  const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
-  list.innerHTML = scores.length
-    ? scores.map((s,i) => `<div class="score-row"><span class="rank">${medals[i]}</span><span style="font-weight:bold;letter-spacing:1px">${s.name}</span><span class="sv">${s.score}</span></div>`).join('')
-    : '<div class="score-row"><span style="opacity:.5">No scores yet!</span></div>';
+  const medals = ['🥇','🥈','🥉'];
+  const html = scores.length
+    ? scores.map((s,i) => `<div class="score-row"><span class="rank">${i<3?medals[i]:(i+1)}</span><span style="font-weight:bold;letter-spacing:1px">${s.name}</span><span class="sv">${s.score}</span></div>`).join('')
+    : '<div class="score-row"><span style="opacity:.5">No scores yet — be the first!</span></div>';
+  lists.forEach(el => el.innerHTML = html);
 };
 
 loadGlobalScores();
@@ -171,8 +171,8 @@ body{background:linear-gradient(180deg,#1a0a00,#3d1f00 50%,#2a0a3e);font-family:
 #overlay.hidden{display:none;}
 .ov-title{font-family:'Cinzel Decorative',serif;font-size:clamp(18px,5vw,28px);color:var(--gold);text-shadow:0 0 20px rgba(255,215,0,.5);text-align:center;}
 .ov-sub{color:var(--sand);font-size:clamp(12px,2.5vw,15px);text-align:center;max-width:320px;line-height:1.5;}
-#scores-panel{background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.25);border-radius:12px;padding:9px 16px;width:100%;max-width:280px;}
-#scores-panel h3{color:var(--gold);font-size:clamp(10px,2vw,13px);text-align:center;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid rgba(255,215,0,.2);}
+#scores-panel{background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.25);border-radius:12px;padding:9px 16px;width:100%;max-width:280px;max-height:260px;overflow-y:auto;}
+#scores-panel h3{color:var(--gold);font-size:clamp(10px,2vw,13px);text-align:center;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid rgba(255,215,0,.2);position:sticky;top:0;background:rgba(20,5,40,.95);}
 .score-row{display:flex;justify-content:space-between;color:var(--sand);font-size:clamp(11px,2vw,14px);padding:2px 0;}
 .score-row .rank{color:var(--gold);width:22px;}.score-row .sv{color:var(--gold);}
 .big-btn{background:linear-gradient(135deg,var(--gold),var(--dark-gold));color:#3d1f00;border:none;border-radius:50px;padding:12px 36px;font-family:'Fredoka One',cursive;font-size:clamp(16px,3.5vw,22px);cursor:pointer;box-shadow:0 4px 16px rgba(255,215,0,.35),0 2px 0 #5c3d00;transition:transform .1s;touch-action:manipulation;}
@@ -180,14 +180,81 @@ body{background:linear-gradient(180deg,#1a0a00,#3d1f00 50%,#2a0a3e);font-family:
 .rules-box{background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.2);border-radius:10px;padding:8px 16px;max-width:320px;width:100%;}
 .rules-box p{color:var(--sand);font-size:clamp(11px,2.2vw,14px);line-height:1.7;margin:2px 0;}
 .warn{color:#ffaa00;}.danger{color:#ff5555;}
-#name-modal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:600;padding:20px;}
+
+/* ── SCREEN SYSTEM ── */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;z-index:500;padding:0 16px 24px;}
+.screen.hidden{display:none;}
+
+/* ── MAIN MENU ── */
+#menu-screen{background:linear-gradient(180deg,#0a0018 0%,#1a0535 40%,#2a0a3e 70%,#3d1f00 100%);}
+#menu-tut-wrap{width:min(55vw,200px);position:relative;filter:drop-shadow(0 0 30px rgba(255,215,0,.4));flex-shrink:0;margin-top:8px;}
+#menu-hieroglyphs{width:100%;text-align:center;font-size:clamp(13px,3.5vw,18px);color:rgba(255,215,0,.25);letter-spacing:6px;padding:4px 0;pointer-events:none;}
+#menu-title-wrap{text-align:center;flex-shrink:0;}
+#menu-title{font-family:'Cinzel Decorative',serif;font-size:clamp(20px,6vw,34px);color:var(--gold);text-shadow:0 0 40px rgba(255,215,0,.7),0 0 80px rgba(255,215,0,.3),3px 3px 0 #000;line-height:1.1;letter-spacing:2px;}
+#menu-subtitle{font-family:'Cinzel Decorative',serif;font-size:clamp(9px,2.2vw,13px);color:rgba(255,215,0,.6);letter-spacing:4px;margin-top:4px;}
+.menu-btn{width:min(280px,85vw);border:none;border-radius:50px;font-family:'Fredoka One',cursive;cursor:pointer;touch-action:manipulation;transition:transform .1s,box-shadow .1s;-webkit-tap-highlight-color:transparent;flex-shrink:0;}
+.menu-btn:active{transform:translateY(3px);}
+#menu-play-btn{background:linear-gradient(135deg,#FFD700,#B8860B);color:#1a0a00;font-size:clamp(18px,4.5vw,26px);padding:16px 0;box-shadow:0 6px 0 #5c3d00,0 8px 24px rgba(255,215,0,.4);border:2px solid rgba(255,255,255,.2);}
+#menu-scores-btn{background:linear-gradient(135deg,#2a0a3e,#4a1a6e);color:var(--gold);font-size:clamp(15px,3.5vw,20px);padding:13px 0;box-shadow:0 4px 0 #1a0020,0 6px 18px rgba(74,26,110,.5);border:2px solid rgba(255,215,0,.3);}
+#menu-how-btn{background:rgba(255,255,255,.05);color:rgba(255,215,0,.7);font-size:clamp(13px,3vw,17px);padding:11px 0;box-shadow:none;border:1px solid rgba(255,215,0,.2);}
+.menu-deco-bar{width:min(260px,80vw);height:2px;background:linear-gradient(90deg,transparent,rgba(255,215,0,.4),transparent);flex-shrink:0;}
+#menu-scarab{font-size:clamp(22px,6vw,32px);text-align:center;animation:scarabPulse 3s ease-in-out infinite;flex-shrink:0;}
+@keyframes scarabPulse{0%,100%{transform:scale(1);filter:drop-shadow(0 0 6px rgba(255,215,0,.3));}50%{transform:scale(1.08);filter:drop-shadow(0 0 16px rgba(255,215,0,.7));}}
+@keyframes menuGlow{0%,100%{text-shadow:0 0 40px rgba(255,215,0,.7),0 0 80px rgba(255,215,0,.3),3px 3px 0 #000;}50%{text-shadow:0 0 60px rgba(255,215,0,1),0 0 120px rgba(255,215,0,.5),3px 3px 0 #000;}}
+#menu-title{animation:menuGlow 3s ease-in-out infinite;}
+
+/* ── OPTIONS ── */
+#menu-options-btn{background:rgba(255,255,255,.05);color:rgba(255,215,0,.7);font-size:clamp(13px,3vw,17px);padding:11px 0;box-shadow:none;border:1px solid rgba(255,215,0,.2);}
+#options-wrap{width:min(320px,92vw);flex-shrink:0;}
+#options-wrap.hidden{display:none;}
+.opt-row{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.opt-lbl{color:var(--sand);font-size:clamp(12px,2.8vw,15px);flex:1;}
+.opt-toggle{border:2px solid var(--gold);border-radius:50px;padding:5px 18px;font-family:'Fredoka One',cursive;font-size:13px;cursor:pointer;touch-action:manipulation;min-width:54px;}
+.opt-on{background:linear-gradient(135deg,var(--gold),var(--dark-gold));color:#1a0a00;}
+.opt-off{background:rgba(255,255,255,.05);color:rgba(255,215,0,.5);}
+#how-to-wrap{width:min(320px,92vw);flex-shrink:0;}
+#how-to-wrap.hidden{display:none;}
+
+/* ── LEADERBOARD SCREEN ── */
+#scores-screen{background:linear-gradient(180deg,#0a0018,#1a0535 50%,#2a0a3e);}
+#scores-screen-inner{width:min(340px,95vw);display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:16px;}
+#scores-back-btn{align-self:flex-start;background:none;border:2px solid rgba(255,215,0,.4);color:var(--gold);font-family:'Fredoka One',cursive;font-size:clamp(13px,3vw,16px);padding:8px 18px;border-radius:50px;cursor:pointer;touch-action:manipulation;}
+#scores-title{font-family:'Cinzel Decorative',serif;font-size:clamp(16px,4.5vw,26px);color:var(--gold);text-shadow:0 0 20px rgba(255,215,0,.5);text-align:center;}
+#scores-hiero{font-size:clamp(16px,4vw,22px);color:rgba(255,215,0,.3);letter-spacing:8px;text-align:center;}
+#scores-panel-full{background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.25);border-radius:16px;padding:12px 16px;width:100%;}
+#scores-panel-full h3{color:var(--gold);font-size:clamp(10px,2.5vw,14px);text-align:center;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,215,0,.2);}
+#scores-refresh-btn{background:none;border:1px solid rgba(255,215,0,.3);color:var(--gold);font-family:'Fredoka One',cursive;font-size:13px;padding:6px 16px;border-radius:50px;cursor:pointer;touch-action:manipulation;}
+
+/* ── RESULTS SCREEN ── */
+#results-screen{background:linear-gradient(180deg,#0a0018,#1a0535 50%,#2a0a3e);}
+#results-inner{width:min(340px,95vw);display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:20px;}
+#results-title{font-family:'Cinzel Decorative',serif;font-size:clamp(28px,9vw,52px);text-align:center;text-shadow:0 0 30px currentColor,3px 3px 0 #000;line-height:1.1;}
+#results-title.win{color:#FFD700;}
+#results-title.lose{color:#ff3333;}
+#results-body{color:var(--sand);font-size:clamp(13px,3vw,17px);text-align:center;line-height:1.7;}
+#results-scores-panel{background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.25);border-radius:16px;padding:10px 14px;width:100%;max-height:220px;overflow-y:auto;}
+#results-scores-panel h3{color:var(--gold);font-size:clamp(10px,2.5vw,13px);text-align:center;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(255,215,0,.2);position:sticky;top:0;background:rgba(15,5,35,.98);}
+#results-play-again-btn{background:linear-gradient(135deg,#FFD700,#B8860B);color:#1a0a00;border:none;border-radius:50px;padding:14px 0;width:min(280px,85vw);font-family:'Fredoka One',cursive;font-size:clamp(16px,4vw,22px);cursor:pointer;box-shadow:0 5px 0 #5c3d00,0 7px 20px rgba(255,215,0,.3);touch-action:manipulation;}
+#results-menu-btn{background:rgba(255,255,255,.05);color:rgba(255,215,0,.7);border:1px solid rgba(255,215,0,.2);border-radius:50px;padding:10px 0;width:min(280px,85vw);font-family:'Fredoka One',cursive;font-size:clamp(13px,3vw,17px);cursor:pointer;touch-action:manipulation;}
+
+/* ── NAME MODAL ── */
+#name-modal{position:fixed;inset:0;background:rgba(0,0,0,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:600;padding:20px;}
 #name-modal.hidden{display:none;}
-#name-modal .ov-title{font-size:clamp(16px,4vw,24px);}
+#name-modal .ov-title{font-family:'Cinzel Decorative',serif;font-size:clamp(16px,4vw,24px);color:var(--gold);text-shadow:0 0 20px rgba(255,215,0,.5);}
 #name-input{background:rgba(255,215,0,.1);border:2px solid var(--gold);color:var(--gold);font-family:'Cinzel Decorative',serif;font-size:clamp(22px,6vw,34px);letter-spacing:8px;text-align:center;padding:12px 16px;border-radius:10px;width:220px;text-transform:uppercase;outline:none;caret-color:var(--gold);}
 #name-input::placeholder{opacity:.3;letter-spacing:4px;}
 #name-submit-btn{background:linear-gradient(135deg,var(--gold),var(--dark-gold));color:#3d1f00;border:none;border-radius:50px;padding:12px 36px;font-family:'Fredoka One',cursive;font-size:clamp(16px,3.5vw,20px);cursor:pointer;box-shadow:0 4px 16px rgba(255,215,0,.35);touch-action:manipulation;}
 #name-submit-btn:disabled{opacity:.5;}
 #name-score-display{color:var(--gold);font-family:'Fredoka One',cursive;font-size:clamp(14px,3vw,18px);text-align:center;}
+
+/* shared score row (used in all panels) */
+#scores-panel{display:none;}
+.score-row{display:flex;justify-content:space-between;align-items:center;color:var(--sand);font-size:clamp(11px,2.5vw,14px);padding:3px 0;border-bottom:1px solid rgba(255,215,0,.06);}
+.score-row:last-child{border-bottom:none;}
+.score-row .rank{color:var(--gold);width:28px;font-size:clamp(12px,2.8vw,15px);}
+.score-row .sv{color:var(--gold);font-weight:bold;}
+.big-btn{background:linear-gradient(135deg,var(--gold),var(--dark-gold));color:#3d1f00;border:none;border-radius:50px;padding:12px 36px;font-family:'Fredoka One',cursive;font-size:clamp(16px,3.5vw,22px);cursor:pointer;box-shadow:0 4px 16px rgba(255,215,0,.35),0 2px 0 #5c3d00;transition:transform .1s;touch-action:manipulation;}
+.big-btn:active{transform:translateY(2px);}
 </style>
 </head>
 <body>
@@ -272,29 +339,129 @@ body{background:linear-gradient(180deg,#1a0a00,#3d1f00 50%,#2a0a3e);font-family:
 <div id="score-popup"></div>
 <div id="multi-reset-popup">💥 MULTIPLIER<br>LOST!<br><span style="font-size:.85em;color:#ffaa00">Back to x1!</span></div>
 <div id="game-over-screen"><div id="game-over-text">GAME<br>OVER!</div></div>
+
+<!-- NAME ENTRY MODAL -->
 <div id="name-modal" class="hidden">
   <div class="ov-title">👑 ENTER YOUR NAME</div>
   <div id="name-score-display"></div>
-  <input id="name-input" type="text" maxlength="5" placeholder="ABCDE" autocomplete="off" autocorrect="off" spellcheck="false"/>
-  <div class="ov-sub" style="font-size:clamp(10px,2vw,12px);opacity:.7">5 letters — will appear on global leaderboard</div>
+  <input id="name-input" type="text" maxlength="9" placeholder="YOURNAME" autocomplete="off" autocorrect="off" spellcheck="false"/>
+  <div style="color:rgba(255,215,0,.5);font-family:'Fredoka One',cursive;font-size:clamp(10px,2vw,12px);text-align:center;">Up to 9 characters — global leaderboard</div>
   <button id="name-submit-btn" class="big-btn" onclick="submitName()">👑 SUBMIT SCORE</button>
   <button class="big-btn" style="background:rgba(255,255,255,.08);color:var(--sand);box-shadow:none;font-size:clamp(12px,2.5vw,15px);padding:8px 24px;" onclick="skipName()">Skip</button>
 </div>
-<div id="overlay">
-  <div class="ov-title" id="ov-title">PHARAOH'S REVENGE</div>
-  <div style="font-size:clamp(32px,8vw,52px)">💩🧻🚽👑</div>
-  <div class="ov-sub" id="ov-sub">Help King Tutankhamun on his Royal Throne!</div>
-  <div class="rules-box">
-    <p>💩 <strong>POOP</strong> &amp; 🧻 <strong>WIPE</strong> — tap as they fall from Tut's bum!</p>
-    <p>🚽 <strong>FLUSH</strong> — it's a <strong class="warn">TRAP</strong> for the first 50 seconds!</p>
-    <p class="danger">🚽 Tap FLUSH early = -499 points &amp; multiplier resets!</p>
-    <p>✅ Let FLUSH fall past = nothing happens</p>
-    <p>💀 Let POOP or WIPE fall past = multiplier resets!</p>
-    <p>⏱ Last 10 seconds — <strong class="warn">FLUSH turns RED — SMASH IT!</strong></p>
-    <p>🔥 Build your multiplier high — no limit!</p>
+
+<!-- MAIN MENU SCREEN -->
+<div id="menu-screen" class="screen">
+  <div id="menu-hieroglyphs">𓂀 𓆣 𓅓 𓋹 𓊃 𓆣 𓂀</div>
+  <div id="menu-tut-wrap">
+    <svg viewBox="0 0 180 230" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+      <g><ellipse cx="90" cy="218" rx="52" ry="10" fill="#c8b89a" opacity="0.4"/><ellipse cx="90" cy="213" rx="50" ry="11" fill="#e8dcc8" stroke="#c8b89a" stroke-width="1.5"/><rect x="40" y="200" width="100" height="17" rx="7" fill="#f0e6d0" stroke="#c8b89a" stroke-width="1.5"/><rect x="38" y="196" width="104" height="9" rx="4" fill="#FFD700" opacity="0.85"/></g>
+      <g>
+        <path d="M58 168 Q90 178 122 168 L128 200 Q90 210 52 200 Z" fill="#4a2c7a"/>
+        <path d="M64 122 Q90 132 116 122 L119 137 Q90 148 61 137 Z" fill="#FFD700" opacity="0.9"/>
+        <ellipse cx="47" cy="157" rx="11" ry="7" fill="#d4a574" transform="rotate(-20,47,157)"/><ellipse cx="133" cy="157" rx="11" ry="7" fill="#d4a574" transform="rotate(20,133,157)"/>
+        <ellipse cx="41" cy="165" rx="8" ry="6" fill="#d4a574"/><ellipse cx="139" cy="165" rx="8" ry="6" fill="#d4a574"/>
+        <line x1="41" y1="165" x2="34" y2="136" stroke="#FFD700" stroke-width="2.5" stroke-linecap="round"/><circle cx="33" cy="133" r="4.5" fill="#FFD700"/>
+        <line x1="139" y1="165" x2="146" y2="136" stroke="#FFD700" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M53 85 Q53 40 90 38 Q127 40 127 85 L133 113 Q119 121 90 123 Q61 121 47 113 Z" fill="#1a5fa8"/>
+        <line x1="56" y1="67" x2="49" y2="115" stroke="#FFD700" stroke-width="2" opacity="0.65"/><line x1="66" y1="59" x2="58" y2="121" stroke="#FFD700" stroke-width="2" opacity="0.65"/>
+        <line x1="124" y1="67" x2="131" y2="115" stroke="#FFD700" stroke-width="2" opacity="0.65"/><line x1="114" y1="59" x2="122" y2="121" stroke="#FFD700" stroke-width="2" opacity="0.65"/>
+        <rect x="57" y="77" width="66" height="9" rx="4.5" fill="#FFD700"/>
+        <path d="M86 38 Q90 19 94 38" stroke="#FFD700" stroke-width="2.5" fill="none"/><ellipse cx="90" cy="19" rx="4.5" ry="7" fill="#cc2200"/>
+        <ellipse cx="90" cy="95" rx="29" ry="33" fill="#d4a574"/>
+        <ellipse cx="76" cy="90" rx="9.5" ry="6.5" fill="white"/><ellipse cx="104" cy="90" rx="9.5" ry="6.5" fill="white"/>
+        <circle cx="75" cy="90" r="3.8" fill="#1a0a00"/><circle cx="73.5" cy="88.5" r="1.3" fill="white" opacity="0.6"/>
+        <circle cx="103" cy="90" r="3.8" fill="#1a0a00"/><circle cx="101.5" cy="88.5" r="1.3" fill="white" opacity="0.6"/>
+        <path d="M67 81 Q76 76 85 80" stroke="#111" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M95 80 Q104 76 113 81" stroke="#111" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <ellipse cx="90" cy="103" rx="4.5" ry="3.5" fill="#c49060"/>
+        <path d="M76 114 Q90 124 104 114" stroke="#8B4513" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        <ellipse cx="90" cy="80" rx="5.5" ry="3.5" fill="#00aa88"/>
+      </g>
+    </svg>
   </div>
-  <div id="scores-panel"><h3>👑 Hall of Pharaohs 👑</h3><div id="scores-list"></div></div>
-  <button class="big-btn" id="start-btn" onclick="startGame()">👑 SIT ON THE THRONE!</button>
+  <div id="menu-title-wrap">
+    <div id="menu-title">PHARAOH'S<br>REVENGE</div>
+    <div id="menu-subtitle">𓆣 THE ROYAL FLUSH 𓆣</div>
+  </div>
+  <div class="menu-deco-bar"></div>
+  <button id="menu-play-btn" class="menu-btn" onclick="startGame()">👑 SIT ON THE THRONE!</button>
+  <button id="menu-scores-btn" class="menu-btn" onclick="showScoresScreen()">🏆 HALL OF PHARAOHS</button>
+  <button id="menu-how-btn" class="menu-btn" onclick="toggleHowTo()">📜 HOW TO PLAY</button>
+  <button id="menu-options-btn" class="menu-btn" onclick="toggleOptions()">⚙️ OPTIONS</button>
+  <div id="how-to-wrap" class="hidden">
+    <div class="rules-box">
+      <p><strong style="color:var(--gold);">👑 THE ROYAL SITUATION</strong></p>
+      <p>King Tutankhamun has been struck by the most undignified curse in all of Egypt — the dreaded Pharaoh's Revenge! His royal bottom has declared independence and only YOU can manage the chaos. This is not a drill. This is a bum emergency.</p>
+      <br>
+      <p><strong style="color:var(--gold);">💩 YOUR SACRED DUTIES</strong></p>
+      <p>Tap 💩 <strong>POOP</strong> and 🧻 <strong>WIPE</strong> every time they appear — the Pharaoh's dignity depends on it! Miss one and your multiplier collapses faster than a badly built pyramid.</p>
+      <br>
+      <p><strong style="color:var(--gold);">🚽 THE CURSED FLUSH</strong></p>
+      <p>DO NOT touch FLUSH for the first 50 seconds — it is a <strong class="danger">TRAP</strong> set by your enemies! Touch it early and suffer <strong class="danger">-499 points</strong> and the Pharaoh's eternal disappointment. In the last 10 seconds it turns RED — then <strong class="warn">smash it like you're sending it down the Nile forever!</strong></p>
+      <br>
+      <p><strong style="color:var(--gold);">⭐ 10 LEVELS OF SUFFERING</strong></p>
+      <p>Each level the buttons fall faster and Tut gets more desperate. Hit the score target to advance or face the Pharaoh's wrath. Survive all 10 and face <strong class="danger">CHAOS MODE</strong> — 10 seconds of absolute royal madness where EVERYTHING fires at once!</p>
+      <br>
+      <p><strong style="color:var(--gold);">👑 YOUR LEGACY</strong></p>
+      <p>Build your multiplier as high as you can — there is NO limit! Only legends make it into the Hall of Pharaohs. Will YOUR name be carved in stone for eternity... or just written in sand? 💩</p>
+    </div>
+  </div>
+  <div id="options-wrap" class="hidden">
+    <div class="rules-box" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="opt-row">
+        <span class="opt-lbl">🔊 Master Sound</span>
+        <button id="opt-mute-btn" class="opt-toggle opt-on" onclick="optToggleMute()">ON</button>
+      </div>
+      <div class="opt-row">
+        <span class="opt-lbl">🎚️ SFX Volume</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:rgba(255,215,0,.5);font-size:11px;">0</span>
+          <input id="opt-vol-slider" type="range" min="0" max="100" value="55" oninput="optSetVolume(this.value)" style="flex:1;accent-color:var(--gold);"/>
+          <span style="color:rgba(255,215,0,.5);font-size:11px;">100</span>
+        </div>
+      </div>
+      <div class="opt-row">
+        <span class="opt-lbl">🎵 Music</span>
+        <button id="opt-music-btn" class="opt-toggle opt-on" onclick="optToggleMusic()">ON</button>
+      </div>
+      <div class="opt-row">
+        <span class="opt-lbl">📳 Vibration</span>
+        <button id="opt-vib-btn" class="opt-toggle opt-on" onclick="optToggleVibration()">ON</button>
+      </div>
+    </div>
+  </div>
+  <div id="menu-scarab">𓆣</div>
+  <div id="menu-hieroglyphs" style="opacity:.15;">𓋹 𓊃 𓅓 𓂀 𓆣 𓋹 𓊃</div>
+</div>
+
+<!-- LEADERBOARD SCREEN -->
+<div id="scores-screen" class="screen hidden">
+  <div id="scores-screen-inner">
+    <button id="scores-back-btn" onclick="showMenuScreen()">← Back</button>
+    <div id="scores-hiero">𓂀 𓆣 𓅓 𓋹 𓆣 𓂀</div>
+    <div id="scores-title">👑 HALL OF PHARAOHS 👑</div>
+    <div id="scores-panel-full">
+      <h3>TOP 20 GLOBAL SCORES</h3>
+      <div id="scores-list-lb" class="scores-list-target"></div>
+    </div>
+    <button id="scores-refresh-btn" onclick="if(window.renderGlobalScores)window.renderGlobalScores()">🔄 Refresh</button>
+    <div style="color:rgba(255,215,0,.2);font-size:13px;letter-spacing:4px;text-align:center;">𓆣 𓂀 𓅓 𓋹 𓆣</div>
+  </div>
+</div>
+
+<!-- RESULTS SCREEN -->
+<div id="results-screen" class="screen hidden">
+  <div id="results-inner">
+    <div id="results-title" class="lose">GAME<br>OVER!</div>
+    <div id="results-body"></div>
+    <div id="results-scores-panel">
+      <h3>🏆 Hall of Pharaohs</h3>
+      <div id="scores-list-results" class="scores-list-target"></div>
+    </div>
+    <button id="results-play-again-btn" onclick="startGame()">🔄 PLAY AGAIN</button>
+    <button id="results-menu-btn" onclick="showMenuScreen()">🏠 Main Menu</button>
+  </div>
 </div>
 <script>
 const S=id=>document.getElementById(id);
@@ -313,12 +480,11 @@ function getDropMs(){return Math.round(1000 / (1 + (currentLevel-1)*(2/9)));}
 // Gap between buttons: L1=150ms, shrinks to 50ms by L10
 function getGapMs(){return Math.round(150 - (currentLevel-1)*(100/9));}
 const poopBtn=S('poop-btn'),flushBtn=S('flush-btn'),rollBtn=S('roll-btn');
-const overlay=S('overlay'),ovTitle=S('ov-title'),ovSub=S('ov-sub');
 const scoreDisp=S('score-display'),bestDisp=S('best-display'),multiVal=S('multi-val');
 const timerDisp=S('timer-display'),timerBar=S('timer-bar');
 const combDisp=S('combo-display'),combCount=S('combo-count');
 const scorePopup=S('score-popup'),hintText=S('hint-text'),faceCap=S('face-caption');
-const gameArea=S('game-area'),scoresList=S('scores-list'),last10Ban=S('last10-banner');
+const gameArea=S('game-area'),last10Ban=S('last10-banner');
 const gameFlash=S('game-flash'),mResetPop=S('multi-reset-popup'),goScreen=S('game-over-screen');
 const wipeArmEl=S('wipe-arm'),tutSvg=S('tut-svg'),tutBG=S('tut-body-group'),toilWater=S('toilet-water');
 const canvas=S('part-canvas'),ctx=canvas.getContext('2d');
@@ -326,12 +492,39 @@ const mo=S('mo'),lb=S('lb'),rb=S('rb'),lp=S('lp'),rp=S('rp');
 const lbl=S('lbl'),rbl=S('rbl'),sw=S('sw'),tg=S('tg'),dz=S('dz');
 let particles=[];
 
+function showMenuScreen(){
+  S('menu-screen').classList.remove('hidden');
+  S('scores-screen').classList.add('hidden');
+  S('results-screen').classList.add('hidden');
+  if(window.renderGlobalScores)window.renderGlobalScores();
+  playMenuMusic();
+}
+function showScoresScreen(){
+  S('menu-screen').classList.add('hidden');
+  S('scores-screen').classList.remove('hidden');
+  S('results-screen').classList.add('hidden');
+  if(window.renderGlobalScores)window.renderGlobalScores();
+  playMenuMusic();
+}
+function showResultsScreen(){
+  S('menu-screen').classList.add('hidden');
+  S('scores-screen').classList.add('hidden');
+  S('results-screen').classList.remove('hidden');
+  playMenuMusic();
+}
+function toggleHowTo(){
+  const w=S('how-to-wrap');
+  if(w)w.classList.toggle('hidden');
+  const ow=S('options-wrap');
+  if(ow&&!ow.classList.contains('hidden'))ow.classList.add('hidden');
+}
+
 function resizeCanvas(){if(!tutSvg)return;const r=tutSvg.getBoundingClientRect();canvas.width=r.width;canvas.height=r.height;}
 window.addEventListener('resize',resizeCanvas);setTimeout(resizeCanvas,100);
 
 function loadScores(){
-  renderScores();updateBest();
-  if(window.renderGlobalScores) window.renderGlobalScores();
+  updateBest();
+  if(window.renderGlobalScores)window.renderGlobalScores();
 }
 function saveScore(s){
   highScores.push(s);highScores.sort((a,b)=>b-a);highScores=highScores.slice(0,5);
@@ -339,9 +532,7 @@ function saveScore(s){
   updateBest();
 }
 function updateBest(){setText(bestDisp,highScores[0]||0);}
-function renderScores(){
-  if(window.renderGlobalScores) window.renderGlobalScores();
-}
+function renderScores(){if(window.renderGlobalScores)window.renderGlobalScores();}
 
 function showNameModal(s){
   const modal=S('name-modal');
@@ -363,7 +554,7 @@ function showNameModal(s){
 window.submitName=function(){
   const ni=S('name-input');
   const btn=S('name-submit-btn');
-  const name=(ni?ni.value:'').trim().toUpperCase().padEnd(5,'_').slice(0,5);
+  const name=(ni?ni.value:'').trim().toUpperCase().padEnd(1,'_').slice(0,9);
   if(!name||name==='_____')return;
   if(btn){btn.disabled=true;btn.textContent='Saving...';}
   if(window.submitScoreToFirebase){
@@ -387,11 +578,11 @@ function showOverlayAfterGame(){
   const rt=['🥇 NEW RECORD!','🥈 Second Place!','🥉 Third Place!','Honourable attempt!','Keep practising!'][Math.min(rank-1,4)];
   const levelsCleared=wonGame?'All 10 levels conquered! 👑':`Reached Level ${currentLevel}`;
   const v=wonGame?'THE PHARAOH IS VICTORIOUS! 👑⚡':score>=5000?'A LIVING GOD! ⚡👑':score>=2000?'The gods bow before you! 👑':score>=800?'Most impressive, Pharaoh! 💩':'The Pharaoh is NOT amused. 😒';
-  setText(ovTitle,wonGame?"👑 VICTORY! 👑":"💩 GAME OVER!");
-  setHTML(ovSub,`<strong style="color:#FFD700;font-size:1.2em">${levelsCleared}</strong><br><br>Final Score: <strong style="color:#FFD700;font-size:1.4em">${score}</strong><br><em>${rt}</em><br><br>${v}<br><br><span style="color:rgba(255,150,0,.8);font-size:.85em">🔥 Peak multiplier: x${peakCombo}</span>`);
-  const sb=S('start-btn');if(sb)sb.textContent='🔄 SIT AGAIN!';
+  const rt2=S('results-title');
+  if(rt2){rt2.textContent=wonGame?'VICTORY!':'GAME OVER!';rt2.className=wonGame?'win':'lose';}
+  setHTML(S('results-body'),`<strong style="color:#FFD700;font-size:1.15em">${levelsCleared}</strong><br>Final Score: <strong style="color:#FFD700;font-size:1.5em">${score}</strong><br><em style="color:var(--sand)">${rt}</em><br>${v}<br><span style="color:rgba(255,150,0,.8);font-size:.85em">🔥 Peak multiplier: x${peakCombo}</span>`);
   if(window.renderGlobalScores)window.renderGlobalScores();
-  if(overlay)overlay.classList.remove('hidden');
+  showResultsScreen();
 }
 
 const PF=[
@@ -484,7 +675,7 @@ function launchButton(type){
     btn.classList.remove('visible','safe');
     activeButton=null;
     if(type==='flush'&&!isLast10&&!isChaos){/* silent */}
-    else{resetMulti('miss');playMiss();}
+    else{resetMulti('miss');playMiss();vibrate(80);}
     scheduleNext();
   },getDropMs());
 }
@@ -661,7 +852,10 @@ function endLevel(){
 function startGame(){
   score=0;totalScore=0;timeLeft=60;combo=1;peakCombo=1;currentLevel=1;isChaos=false;wonGame=false;
   particles=[];tutSettle(0);setFaceNormal();
-  if(overlay)overlay.classList.add('hidden');
+  S('menu-screen').classList.add('hidden');
+  S('scores-screen').classList.add('hidden');
+  S('results-screen').classList.add('hidden');
+  stopMenuMusic();
   resizeCanvas();
   startLevel();
 }
@@ -689,21 +883,80 @@ function endGame(){
     showNameModal(score);
   },1900);
 }
-loadScores();try{highScores=JSON.parse(localStorage.getItem('pr_scores')||'[]');}catch(e){highScores=[];}updateBest();setTimeout(resizeCanvas,300);
+try{highScores=JSON.parse(localStorage.getItem('pr_scores')||'[]');}catch(e){highScores=[];}
+loadScores();setTimeout(resizeCanvas,300);
+document.addEventListener('click',()=>playMenuMusic(),{once:true});
 
 // ── SOUND ENGINE ─────────────────────────────────────────────────────────
-let actx=null,muted=false;
-const VOL=0.55; // medium volume master
+let actx=null,muted=false,sfxVol=0.55,vibrationOn=true;
+
+const menuMusic=new Audio('sandstone_ritual.mp3');
+menuMusic.loop=true;
+menuMusic.volume=0.5;
+let musicEnabled=true;
+
+function playMenuMusic(){
+  if(!musicEnabled||muted)return;
+  menuMusic.currentTime=0;
+  menuMusic.play().catch(()=>{});
+}
+function stopMenuMusic(){
+  menuMusic.pause();
+}
+function optToggleMusic(){
+  musicEnabled=!musicEnabled;
+  const b=S('opt-music-btn');
+  if(!b)return;
+  b.textContent=musicEnabled?'ON':'OFF';
+  b.className=musicEnabled?'opt-toggle opt-on':'opt-toggle opt-off';
+  if(musicEnabled)playMenuMusic();else stopMenuMusic();
+}
 
 function getCtx(){
   if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();
   if(actx.state==='suspended')actx.resume();
   return actx;
 }
+
+function optToggleMute(){
+  muted=!muted;
+  const btn=S('mute-btn');
+  if(btn)btn.textContent=muted?'🔇':'🔊';
+  if(muted)stopMenuMusic();else if(musicEnabled)playMenuMusic();
+  syncOptMuteBtn();
+}
 function toggleMute(){
   muted=!muted;
   const btn=S('mute-btn');
   if(btn)btn.textContent=muted?'🔇':'🔊';
+  if(muted)stopMenuMusic();else if(musicEnabled)playMenuMusic();
+  syncOptMuteBtn();
+}
+function syncOptMuteBtn(){
+  const b=S('opt-mute-btn');
+  if(!b)return;
+  b.textContent=muted?'OFF':'ON';
+  b.className=muted?'opt-toggle opt-off':'opt-toggle opt-on';
+}
+function optSetVolume(val){
+  sfxVol=val/100;
+}
+function optToggleVibration(){
+  vibrationOn=!vibrationOn;
+  const b=S('opt-vib-btn');
+  if(!b)return;
+  b.textContent=vibrationOn?'ON':'OFF';
+  b.className=vibrationOn?'opt-toggle opt-on':'opt-toggle opt-off';
+}
+function vibrate(ms){
+  if(!vibrationOn)return;
+  try{if(navigator.vibrate)navigator.vibrate(ms);}catch(e){}
+}
+function toggleOptions(){
+  const w=S('options-wrap');
+  if(w)w.classList.toggle('hidden');
+  const hw=S('how-to-wrap');
+  if(hw&&!hw.classList.contains('hidden'))hw.classList.add('hidden');
 }
 
 function playPoop(){
@@ -718,8 +971,8 @@ function playPoop(){
   const nFilt=c.createBiquadFilter();nFilt.type='bandpass';nFilt.frequency.value=300;nFilt.Q.value=0.5;
   const nGain=c.createGain();
   noise.connect(nFilt);nFilt.connect(nGain);nGain.connect(c.destination);
-  nGain.gain.setValueAtTime(0,t);nGain.gain.linearRampToValueAtTime(VOL*0.5,t+0.02);
-  nGain.gain.setValueAtTime(VOL*0.5,t+dur*0.6);nGain.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  nGain.gain.setValueAtTime(0,t);nGain.gain.linearRampToValueAtTime(sfxVol*0.5,t+0.02);
+  nGain.gain.setValueAtTime(sfxVol*0.5,t+dur*0.6);nGain.gain.exponentialRampToValueAtTime(0.001,t+dur);
   noise.start(t);noise.stop(t+dur);
   const o=c.createOscillator(),g=c.createGain();
   const dist=c.createWaveShaper();
@@ -731,13 +984,13 @@ function playPoop(){
   o.frequency.setValueAtTime(baseFreq*1.4,t);o.frequency.linearRampToValueAtTime(baseFreq,t+0.04);
   o.frequency.linearRampToValueAtTime(baseFreq*1.2,t+0.09);o.frequency.linearRampToValueAtTime(baseFreq*0.8,t+0.15);
   o.frequency.linearRampToValueAtTime(baseFreq*1.1,t+0.22);o.frequency.exponentialRampToValueAtTime(baseFreq*0.5,t+dur);
-  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(VOL*0.6,t+0.02);
-  g.gain.setValueAtTime(VOL*0.6,t+dur*0.5);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(sfxVol*0.6,t+0.02);
+  g.gain.setValueAtTime(sfxVol*0.6,t+dur*0.5);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
   o.start(t);o.stop(t+dur);
   const o2=c.createOscillator(),g2=c.createGain();
   o2.connect(g2);g2.connect(c.destination);o2.type='sine';
   o2.frequency.setValueAtTime(200,t+dur*0.7);o2.frequency.exponentialRampToValueAtTime(60,t+dur+0.1);
-  g2.gain.setValueAtTime(0,t+dur*0.7);g2.gain.linearRampToValueAtTime(VOL*0.5,t+dur*0.75);
+  g2.gain.setValueAtTime(0,t+dur*0.7);g2.gain.linearRampToValueAtTime(sfxVol*0.5,t+dur*0.75);
   g2.gain.exponentialRampToValueAtTime(0.001,t+dur+0.15);
   o2.start(t+dur*0.7);o2.stop(t+dur+0.15);
 }
@@ -752,8 +1005,8 @@ function playWipe(){
   const filt=c.createBiquadFilter();filt.type='bandpass';filt.frequency.value=3000;filt.Q.value=0.8;
   const g=c.createGain();
   src.connect(filt);filt.connect(g);g.connect(c.destination);
-  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(VOL*0.5,t+0.04);
-  g.gain.linearRampToValueAtTime(VOL*0.3,t+0.15);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(sfxVol*0.5,t+0.04);
+  g.gain.linearRampToValueAtTime(sfxVol*0.3,t+0.15);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
   filt.frequency.setValueAtTime(2000,t);filt.frequency.linearRampToValueAtTime(5000,t+0.15);
   filt.frequency.linearRampToValueAtTime(2000,t+0.3);
   src.start(t);src.stop(t+0.3);
@@ -771,13 +1024,13 @@ function playFlush(){
   filt.frequency.linearRampToValueAtTime(200,t+1.2);
   const g=c.createGain();
   src.connect(filt);filt.connect(g);g.connect(c.destination);
-  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(VOL*0.5,t+0.1);
-  g.gain.setValueAtTime(VOL*0.5,t+0.5);g.gain.exponentialRampToValueAtTime(0.001,t+1.2);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(sfxVol*0.5,t+0.1);
+  g.gain.setValueAtTime(sfxVol*0.5,t+0.5);g.gain.exponentialRampToValueAtTime(0.001,t+1.2);
   src.start(t);src.stop(t+1.2);
   const o=c.createOscillator(),og=c.createGain();
   o.connect(og);og.connect(c.destination);o.type='sine';
   o.frequency.setValueAtTime(220,t);o.frequency.exponentialRampToValueAtTime(80,t+1.0);
-  og.gain.setValueAtTime(VOL*0.15,t);og.gain.exponentialRampToValueAtTime(0.001,t+1.0);
+  og.gain.setValueAtTime(sfxVol*0.15,t);og.gain.exponentialRampToValueAtTime(0.001,t+1.0);
   o.start(t);o.stop(t+1.0);
 }
 
@@ -787,12 +1040,12 @@ function playMiss(){
   const o=c.createOscillator(),g=c.createGain();
   o.connect(g);g.connect(c.destination);o.type='sine';
   o.frequency.setValueAtTime(110,t);o.frequency.exponentialRampToValueAtTime(90,t+1.5);
-  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(VOL*0.6,t+0.01);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(sfxVol*0.6,t+0.01);
   g.gain.exponentialRampToValueAtTime(0.001,t+1.8);o.start(t);o.stop(t+1.8);
   const o2=c.createOscillator(),g2=c.createGain();
   o2.connect(g2);g2.connect(c.destination);o2.type='sine';
   o2.frequency.setValueAtTime(220,t);o2.frequency.exponentialRampToValueAtTime(180,t+1.5);
-  g2.gain.setValueAtTime(0,t);g2.gain.linearRampToValueAtTime(VOL*0.3,t+0.01);
+  g2.gain.setValueAtTime(0,t);g2.gain.linearRampToValueAtTime(sfxVol*0.3,t+0.01);
   g2.gain.exponentialRampToValueAtTime(0.001,t+1.5);o2.start(t);o2.stop(t+1.5);
 }
 
@@ -804,13 +1057,13 @@ function playMultiLost(){
     o.connect(g);g.connect(c.destination);o.type='sawtooth';
     const st=t+i*0.18;
     o.frequency.setValueAtTime(freq,st);o.frequency.setValueAtTime(freq*0.95,st+0.15);
-    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(VOL*0.35,st+0.04);
+    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(sfxVol*0.35,st+0.04);
     g.gain.exponentialRampToValueAtTime(0.001,st+0.2);o.start(st);o.stop(st+0.2);
   });
   const o=c.createOscillator(),g=c.createGain();
   o.connect(g);g.connect(c.destination);o.type='sine';
   o.frequency.setValueAtTime(80,t);o.frequency.exponentialRampToValueAtTime(40,t+0.3);
-  g.gain.setValueAtTime(VOL*0.8,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.4);
+  g.gain.setValueAtTime(sfxVol*0.8,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.4);
   o.start(t);o.stop(t+0.4);
 }
 
@@ -824,14 +1077,14 @@ function playLevelUp(){
     o.frequency.setValueAtTime(freq,st);
     o.frequency.linearRampToValueAtTime(freq*1.02,st+0.04);
     o.frequency.linearRampToValueAtTime(freq,st+0.08);
-    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(VOL*0.4,st+0.02);
+    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(sfxVol*0.4,st+0.02);
     g.gain.exponentialRampToValueAtTime(0.001,st+0.18);o.start(st);o.stop(st+0.18);
   });
   [587,740,880].forEach(freq=>{
     const o=c.createOscillator(),g=c.createGain();
     o.connect(g);g.connect(c.destination);o.type='sine';
     const st=t+0.72;o.frequency.value=freq;
-    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(VOL*0.25,st+0.05);
+    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(sfxVol*0.25,st+0.05);
     g.gain.exponentialRampToValueAtTime(0.001,st+0.5);o.start(st);o.stop(st+0.5);
   });
 }
@@ -845,14 +1098,14 @@ function playChaos(){
     const st=t+i*0.08;const isDeep=i%2===0;
     o.frequency.setValueAtTime(isDeep?130:90,st);
     o.frequency.exponentialRampToValueAtTime(isDeep?50:35,st+0.07);
-    g.gain.setValueAtTime(VOL*0.9,st);g.gain.exponentialRampToValueAtTime(0.001,st+0.09);
+    g.gain.setValueAtTime(sfxVol*0.9,st);g.gain.exponentialRampToValueAtTime(0.001,st+0.09);
     o.start(st);o.stop(st+0.09);
     const buf=c.createBuffer(1,Math.floor(c.sampleRate*0.06),c.sampleRate);
     const d=buf.getChannelData(0);for(let j=0;j<d.length;j++)d[j]=Math.random()*2-1;
     const ns=c.createBufferSource();ns.buffer=buf;
     const nf=c.createBiquadFilter();nf.type='lowpass';nf.frequency.value=200;
     const ng=c.createGain();ns.connect(nf);nf.connect(ng);ng.connect(c.destination);
-    ng.gain.setValueAtTime(isDeep?VOL*0.5:VOL*0.3,st);
+    ng.gain.setValueAtTime(isDeep?sfxVol*0.5:sfxVol*0.3,st);
     ng.gain.exponentialRampToValueAtTime(0.001,st+0.06);
     ns.start(st);ns.stop(st+0.06);
   }
@@ -865,7 +1118,7 @@ function playVictory(){
     const o=c.createOscillator(),g=c.createGain();
     o.connect(g);g.connect(c.destination);o.type='sawtooth';
     const st=t+delay;o.frequency.value=freq;
-    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(VOL*0.35,st+0.04);
+    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(sfxVol*0.35,st+0.04);
     g.gain.exponentialRampToValueAtTime(0.001,st+0.18);o.start(st);o.stop(st+0.2);
   });
   for(let i=0;i<6;i++){
@@ -873,14 +1126,14 @@ function playVictory(){
     o.connect(g);g.connect(c.destination);o.type='sine';
     const st=t+i*0.25;o.frequency.setValueAtTime(100,st);
     o.frequency.exponentialRampToValueAtTime(50,st+0.1);
-    g.gain.setValueAtTime(VOL*0.5,st);g.gain.exponentialRampToValueAtTime(0.001,st+0.12);
+    g.gain.setValueAtTime(sfxVol*0.5,st);g.gain.exponentialRampToValueAtTime(0.001,st+0.12);
     o.start(st);o.stop(st+0.12);
   }
   [392,494,587,784].forEach(freq=>{
     const o=c.createOscillator(),g=c.createGain();
     o.connect(g);g.connect(c.destination);o.type='sine';
     const st=t+1.35;o.frequency.value=freq;
-    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(VOL*0.3,st+0.05);
+    g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(sfxVol*0.3,st+0.05);
     g.gain.exponentialRampToValueAtTime(0.001,st+1.0);o.start(st);o.stop(st+1.0);
   });
 }
